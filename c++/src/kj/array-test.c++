@@ -39,7 +39,7 @@ struct TestObject {
     index = -1;
     copiedCount++;
   }
-  ~TestObject() noexcept(false) {
+  ~TestObject() KJ_NOEXCEPT_IF(false) {
     if (index == -1) {
       --copiedCount;
     } else {
@@ -61,15 +61,15 @@ int TestObject::copiedCount = 0;
 int TestObject::throwAt = -1;
 
 struct TestNoexceptObject {
-  TestNoexceptObject() noexcept {
+  TestNoexceptObject() KJ_NOEXCEPT {
     index = count;
     ++count;
   }
-  TestNoexceptObject(const TestNoexceptObject& other) noexcept {
+  TestNoexceptObject(const TestNoexceptObject& other) KJ_NOEXCEPT {
     index = -1;
     copiedCount++;
   }
-  ~TestNoexceptObject() noexcept {
+  ~TestNoexceptObject() KJ_NOEXCEPT {
     if (index == -1) {
       --copiedCount;
     } else {

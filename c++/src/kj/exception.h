@@ -69,11 +69,37 @@ public:
     // - Update Cap'n Proto's RPC protocol's Exception.Type enum.
   };
 
-  Exception(Type type, const char* file, int line, String description = nullptr) noexcept;
-  Exception(Type type, String file, int line, String description = nullptr) noexcept;
-  Exception(const Exception& other) noexcept;
-  Exception(Exception&& other) = default;
-  ~Exception() noexcept;
+  Exception(Type type, const char* file, int line, String description = nullptr) KJ_NOEXCEPT;
+  Exception(Type type, String file, int line, String description = nullptr) KJ_NOEXCEPT;
+  Exception(const Exception& other) KJ_NOEXCEPT;
+
+#if KJ_VS12
+  Exception(Exception&& other)
+    : ownFile(mv(other.ownFile)), 
+      file(other.file), 
+      line(other.line), 
+      type(other.type), 
+      description(mv(other.description)), 
+      context(mv(other.context)), 
+      traceCount(other.traceCount)
+  {}
+
+  Exception& operator=(Exception&& rhs)
+  {
+    ownFile = mv(rhs.ownFile);
+    file = rhs.file;
+    line = rhs.line;
+    type = rhs.type;
+    description = mv(rhs.description); 
+    context = mv(rhs.context);
+    traceCount = rhs.traceCount;
+
+    return *this;
+  }
+
+#endif
+
+  ~Exception() KJ_NOEXCEPT;
 
   const char* getFile() const { return file; }
   int getLine() const { return line; }
@@ -91,7 +117,25 @@ public:
 
     Context(const char* file, int line, String&& description, Maybe<Own<Context>>&& next)
         : file(file), line(line), description(mv(description)), next(mv(next)) {}
-    Context(const Context& other) noexcept;
+    Context(const Context& other) KJ_NOEXCEPT;
+
+#if KJ_VS12
+
+    Context(Context&& other)
+      : file(other.file), line(other.line), description(mv(other.description)), next(mv(other.next)) {}
+
+    Context& operator=(Context&& rhs)
+    {
+      file = rhs.file;
+      line = rhs.line;
+      description = mv(rhs.description);
+      next = mv(rhs.next);
+
+      return *this;
+    }
+
+#endif
+
   };
 
   inline Maybe<const Context&> getContext() const {
@@ -168,7 +212,7 @@ class ExceptionCallback {
 public:
   ExceptionCallback();
   KJ_DISALLOW_COPY(ExceptionCallback);
-  virtual ~ExceptionCallback() noexcept(false);
+  virtual ~ExceptionCallback() KJ_NOEXCEPT_IF(false);
 
   virtual void onRecoverableException(Exception&& exception);
   // Called when an exception has been raised, but the calling code has the ability to continue by
@@ -219,7 +263,7 @@ KJ_NOINLINE void throwRecoverableException(kj::Exception&& exception, uint ignor
 namespace _ { class Runnable; }
 
 template <typename Func>
-Maybe<Exception> runCatchingExceptions(Func&& func) noexcept;
+Maybe<Exception> runCatchingExceptions(Func&& func) KJ_NOEXCEPT;
 // Executes the given function (usually, a lambda returning nothing) catching any exceptions that
 // are thrown.  Returns the Exception if there was one, or null if the operation completed normally.
 // Non-KJ exceptions will be wrapped.
@@ -274,12 +318,12 @@ private:
   Func func;
 };
 
-Maybe<Exception> runCatchingExceptions(Runnable& runnable) noexcept;
+Maybe<Exception> runCatchingExceptions(Runnable& runnable) KJ_NOEXCEPT;
 
 }  // namespace _ (private)
 
 template <typename Func>
-Maybe<Exception> runCatchingExceptions(Func&& func) noexcept {
+Maybe<Exception> runCatchingExceptions(Func&& func) KJ_NOEXCEPT {
   _::RunnableImpl<Decay<Func>> runnable(kj::fwd<Func>(func));
   return _::runCatchingExceptions(runnable);
 }

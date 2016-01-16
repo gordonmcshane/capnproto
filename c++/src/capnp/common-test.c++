@@ -69,7 +69,7 @@ template <typename T>
 struct EqualTypes_<T, T> { static KJ_CONSTEXPR(const) bool value = true; };
 
 template <typename T, typename U>
-inline constexpr bool equalTypes() { return EqualTypes_<T, U>::value; }
+inline KJ_CONSTEXPR_VS14() bool equalTypes() { return EqualTypes_<T, U>::value; }
 
 using capnproto_test::capnp::test::TestAllTypes;
 using capnproto_test::capnp::test::TestInterface;

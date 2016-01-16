@@ -26,6 +26,11 @@
 #pragma GCC system_header
 #endif
 
+#if KJ_VS12
+#include <functional>
+#include <type_traits>
+#endif
+
 #include "memory.h"
 
 namespace kj {
@@ -106,8 +111,21 @@ public:
   template <typename T> Function& operator=(const Function<T>&) = delete;
   template <typename T> Function(const ConstFunction<T>&) = delete;
   template <typename T> Function& operator=(const ConstFunction<T>&) = delete;
+
+#if KJ_VS12
+  Function(Function&& other) 
+    : impl(kj::mv(other.impl))
+  {}
+
+  Function& operator=(Function&& rhs)
+  {
+	  impl = kj::mv(rhs.impl);
+    return *this;
+  }
+#else
   Function(Function&&) = default;
   Function& operator=(Function&&) = default;
+#endif
 
   inline Return operator()(Params... params) {
     return (*impl)(kj::fwd<Params>(params)...);
@@ -159,8 +177,21 @@ public:
   template <typename T> ConstFunction& operator=(const ConstFunction<T>&) = delete;
   template <typename T> ConstFunction(const Function<T>&) = delete;
   template <typename T> ConstFunction& operator=(const Function<T>&) = delete;
+
+#if KJ_VS12
+  ConstFunction(ConstFunction&& other)
+    : impl(kj::mv(other.impl))
+  {}
+
+  ConstFunction& operator=(ConstFunction&& rhs)
+  {
+    impl = kj::mv(rhs.impl);
+    return *this;
+  }
+#else
   ConstFunction(ConstFunction&&) = default;
   ConstFunction& operator=(ConstFunction&&) = default;
+#endif
 
   inline Return operator()(Params... params) const {
     return (*impl)(kj::fwd<Params>(params)...);
@@ -200,11 +231,51 @@ private:
 
 namespace _ {  // private
 
+#if KJ_VS12
+
+template <typename T, typename Signature, typename MemSignature>
+class BoundMethod;
+
+template<typename T, typename Return, typename... Params, typename MemSignature>
+class BoundMethod<T, Return (T::*)(Params...), MemSignature> {
+public:
+  BoundMethod(T t, MemSignature& fn)
+   : t(t), fn(fn) {}
+  
+  Return operator()(Params&&... params) const
+  {
+    return fn(t, kj::fwd<Params>(params)...);
+  }
+
+private:
+  T t;
+  MemSignature fn;
+};
+
+template<typename T, typename Return, typename... Params, typename MemSignature>
+class BoundMethod<T&, Return (T::*)(Params...), MemSignature> {
+public:
+  BoundMethod(T& t, MemSignature& fn)
+    : t(t), fn(fn) {}
+
+  Return operator()(Params&&... params) const
+  {
+    return fn(&t, kj::fwd<Params>(params)...);
+    
+  }
+
+private:
+  T& t;
+  MemSignature fn;
+};
+
+#else
+
 template <typename T, typename Signature, Signature method>
 class BoundMethod;
 
-template <typename T, typename Return, typename... Params, Return (Decay<T>::*method)(Params...)>
-class BoundMethod<T, Return (Decay<T>::*)(Params...), method> {
+template <typename T, typename Return, typename... Params, Return(Decay<T>::*method)(Params...)>
+class BoundMethod<T, Return(Decay<T>::*)(Params...), method> {
 public:
   BoundMethod(T&& t): t(kj::fwd<T>(t)) {}
 
@@ -217,10 +288,10 @@ private:
 };
 
 template <typename T, typename Return, typename... Params,
-          Return (Decay<T>::*method)(Params...) const>
-class BoundMethod<T, Return (Decay<T>::*)(Params...) const, method> {
+  Return(Decay<T>::*method)(Params...) const>
+class BoundMethod<T, Return(Decay<T>::*)(Params...) const, method> {
 public:
-  BoundMethod(T&& t): t(kj::fwd<T>(t)) {}
+  BoundMethod(T&& t) : t(kj::fwd<T>(t)) {}
 
   Return operator()(Params&&... params) const {
     return (t.*method)(kj::fwd<Params>(params)...);
@@ -230,7 +301,18 @@ private:
   T t;
 };
 
+#endif
+
 }  // namespace _ (private)
+
+#if KJ_VS12
+
+  #define KJ_BIND_METHOD(obj, method) \
+  ::kj::_::BoundMethod<decltype(obj), \
+                       decltype(&::kj::Decay<decltype(obj)>::method), \
+                       decltype(::std::mem_fn(&::kj::Decay<decltype(obj)>::method))> \
+                       (obj, ::std::mem_fn(&::kj::Decay<decltype(obj)>::method)) 
+#else
 
 #define KJ_BIND_METHOD(obj, method) \
   ::kj::_::BoundMethod<KJ_DECLTYPE_REF(obj), \
@@ -244,6 +326,7 @@ private:
 //
 // TODO(someday):  C++14's generic lambdas may be able to simplify this code considerably, and
 //   probably make it work with overloaded methods.
+#endif 
 
 #else
 // Here's a better implementation of the above that doesn't work with GCC (but does with Clang)

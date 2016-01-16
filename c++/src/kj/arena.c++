@@ -23,6 +23,12 @@
 #include "debug.h"
 #include <stdint.h>
 
+#if KJ_VS12
+#define ALIGN_OF(x) _alignof(x)
+#else
+#define ALIGN_OF(x) alignof(x)
+#endif
+
 namespace kj {
 
 Arena::Arena(size_t chunkSizeHint): nextChunkSize(kj::max(sizeof(ChunkHeader), chunkSizeHint)) {}
@@ -41,7 +47,7 @@ Arena::Arena(ArrayPtr<byte> scratch)
   }
 }
 
-Arena::~Arena() noexcept(false) {
+Arena::~Arena() KJ_NOEXCEPT_IF(false) {
   // Run cleanup() explicitly, but if it throws an exception, make sure to run it again as part of
   // unwind.  The second call will not throw because destructors are required to guard against
   // exceptions when already unwinding.
@@ -66,7 +72,7 @@ void Arena::cleanup() {
 
 namespace {
 
-constexpr bool KJ_UNUSED isPowerOfTwo(size_t value) {
+KJ_CONSTEXPR_VS14() bool KJ_UNUSED isPowerOfTwo(size_t value) {
   return (value & (value - 1)) == 0;
 }
 
@@ -91,7 +97,7 @@ inline size_t alignTo(size_t s, uint alignment) {
 
 void* Arena::allocateBytes(size_t amount, uint alignment, bool hasDisposer) {
   if (hasDisposer) {
-    alignment = kj::max(alignment, alignof(ObjectHeader));
+    alignment = kj::max(alignment, ALIGN_OF(ObjectHeader));
     amount += alignTo(sizeof(ObjectHeader), alignment);
   }
 
@@ -124,7 +130,7 @@ void* Arena::allocateBytesInternal(size_t amount, uint alignment) {
   // We need to allocate at least enough space for the ChunkHeader and the requested allocation.
 
   // If the alignment is less than that of the chunk header, we'll need to increase it.
-  alignment = kj::max(alignment, alignof(ChunkHeader));
+  alignment = kj::max(alignment, ALIGN_OF(ChunkHeader));
 
   // If the ChunkHeader size does not match the alignment, we'll need to pad it up.
   amount += alignTo(sizeof(ChunkHeader), alignment);
@@ -158,7 +164,7 @@ StringPtr Arena::copyString(StringPtr content) {
 
 void Arena::setDestructor(void* ptr, void (*destructor)(void*)) {
   ObjectHeader* header = reinterpret_cast<ObjectHeader*>(ptr) - 1;
-  KJ_DASSERT(reinterpret_cast<uintptr_t>(header) % alignof(ObjectHeader) == 0);
+  KJ_DASSERT(reinterpret_cast<uintptr_t>(header) % ALIGN_OF(ObjectHeader) == 0);
   header->destructor = destructor;
   header->next = objectList;
   objectList = header;

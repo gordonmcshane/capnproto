@@ -85,7 +85,7 @@ class BuilderArena;
 typedef decltype(BITS / ELEMENTS) BitsPerElement;
 typedef decltype(POINTERS / ELEMENTS) PointersPerElement;
 
-static constexpr BitsPerElement BITS_PER_ELEMENT_TABLE[8] = {
+static KJ_CONSTEXPR_VS14(const) BitsPerElement BITS_PER_ELEMENT_TABLE[8] = {
     0 * BITS / ELEMENTS,
     1 * BITS / ELEMENTS,
     8 * BITS / ELEMENTS,
@@ -96,22 +96,22 @@ static constexpr BitsPerElement BITS_PER_ELEMENT_TABLE[8] = {
     0 * BITS / ELEMENTS
 };
 
-inline KJ_CONSTEXPR() BitsPerElement dataBitsPerElement(ElementSize size) {
+inline KJ_CONSTEXPR_VS14() BitsPerElement dataBitsPerElement(ElementSize size) {
   return _::BITS_PER_ELEMENT_TABLE[static_cast<int>(size)];
 }
 
-inline constexpr PointersPerElement pointersPerElement(ElementSize size) {
+inline KJ_CONSTEXPR_VS14() PointersPerElement pointersPerElement(ElementSize size) {
   return size == ElementSize::POINTER ? 1 * POINTERS / ELEMENTS : 0 * POINTERS / ELEMENTS;
 }
 
 template <size_t size> struct ElementSizeForByteSize;
-template <> struct ElementSizeForByteSize<1> { static constexpr ElementSize value = ElementSize::BYTE; };
-template <> struct ElementSizeForByteSize<2> { static constexpr ElementSize value = ElementSize::TWO_BYTES; };
-template <> struct ElementSizeForByteSize<4> { static constexpr ElementSize value = ElementSize::FOUR_BYTES; };
-template <> struct ElementSizeForByteSize<8> { static constexpr ElementSize value = ElementSize::EIGHT_BYTES; };
+template <> struct ElementSizeForByteSize<1> { static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::BYTE; };
+template <> struct ElementSizeForByteSize<2> { static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::TWO_BYTES; };
+template <> struct ElementSizeForByteSize<4> { static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::FOUR_BYTES; };
+template <> struct ElementSizeForByteSize<8> { static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::EIGHT_BYTES; };
 
 template <typename T> struct ElementSizeForType {
-  static constexpr ElementSize value =
+  static KJ_CONSTEXPR_VS14(const) ElementSize value =
       // Primitive types that aren't special-cased below can be determined from sizeof().
       CAPNP_KIND(T) == Kind::PRIMITIVE ? ElementSizeForByteSize<sizeof(T)>::value :
       CAPNP_KIND(T) == Kind::ENUM ? ElementSize::TWO_BYTES :
@@ -122,22 +122,22 @@ template <typename T> struct ElementSizeForType {
 };
 
 // Void and bool are special.
-template <> struct ElementSizeForType<Void> { static constexpr ElementSize value = ElementSize::VOID; };
-template <> struct ElementSizeForType<bool> { static constexpr ElementSize value = ElementSize::BIT; };
+template <> struct ElementSizeForType<Void> { static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::VOID; };
+template <> struct ElementSizeForType<bool> { static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::BIT; };
 
 // Lists and blobs are pointers, not structs.
 template <typename T, bool b> struct ElementSizeForType<List<T, b>> {
-  static constexpr ElementSize value = ElementSize::POINTER;
+  static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::POINTER;
 };
 template <> struct ElementSizeForType<Text> {
-  static constexpr ElementSize value = ElementSize::POINTER;
+  static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::POINTER;
 };
 template <> struct ElementSizeForType<Data> {
-  static constexpr ElementSize value = ElementSize::POINTER;
+  static KJ_CONSTEXPR_VS14(const) ElementSize value = ElementSize::POINTER;
 };
 
 template <typename T>
-inline constexpr ElementSize elementSizeForType() {
+inline KJ_CONSTEXPR_VS14() ElementSize elementSizeForType() {
   return ElementSizeForType<T>::value;
 }
 
@@ -164,28 +164,34 @@ union AlignedData {
   // bytes to be word-aligned.
 
   uint8_t bytes[wordCount * sizeof(word)];
-  word words[wordCount];
+#if KJ_VS12
+  struct {
+#endif
+	  word words[wordCount];
+#if KJ_VS12
+  };
+#endif
 };
 
 struct StructSize {
   WordCount16 data;
   WirePointerCount16 pointers;
 
-  inline constexpr WordCount total() const { return data + pointers * WORDS_PER_POINTER; }
+  inline KJ_CONSTEXPR_VS14() WordCount total() const { return data + pointers * WORDS_PER_POINTER; }
 
   StructSize() = default;
-  inline constexpr StructSize(WordCount data, WirePointerCount pointers)
+  inline KJ_CONSTEXPR_VS14() StructSize(WordCount data, WirePointerCount pointers)
       : data(data), pointers(pointers) {}
 };
 
 template <typename T, typename CapnpPrivate = typename T::_capnpPrivate>
-inline constexpr StructSize structSize() {
+inline KJ_CONSTEXPR_VS14() StructSize structSize() {
   return StructSize(CapnpPrivate::dataWordSize * WORDS, CapnpPrivate::pointerCount * POINTERS);
 }
 
 template <typename T, typename CapnpPrivate = typename T::_capnpPrivate,
           typename = kj::EnableIf<CAPNP_KIND(T) == Kind::STRUCT>>
-inline constexpr StructSize minStructSizeForElement() {
+inline KJ_CONSTEXPR_VS14() StructSize minStructSizeForElement() {
   // If T is a struct, return its struct size. Otherwise return the minimum struct size big enough
   // to hold a T.
 
@@ -193,7 +199,7 @@ inline constexpr StructSize minStructSizeForElement() {
 }
 
 template <typename T, typename = kj::EnableIf<CAPNP_KIND(T) != Kind::STRUCT>>
-inline constexpr StructSize minStructSizeForElement() {
+inline KJ_CONSTEXPR_VS14() StructSize minStructSizeForElement() {
   // If T is a struct, return its struct size. Otherwise return the minimum struct size big enough
   // to hold a T.
 
@@ -805,8 +811,8 @@ public:
     memset(&tag, 0, sizeof(tag));
   }
   OrphanBuilder(const OrphanBuilder& other) = delete;
-  inline OrphanBuilder(OrphanBuilder&& other) noexcept;
-  inline ~OrphanBuilder() noexcept(false);
+  inline OrphanBuilder(OrphanBuilder&& other) KJ_NOEXCEPT;
+  inline ~OrphanBuilder() KJ_NOEXCEPT_IF(false);
 
   static OrphanBuilder initStruct(BuilderArena* arena, CapTableBuilder* capTable, StructSize size);
   static OrphanBuilder initList(BuilderArena* arena, CapTableBuilder* capTable,
@@ -870,8 +876,11 @@ public:
   // Versions of truncate() that know how to allocate a new list if needed.
 
 private:
-  static_assert(1 * POINTERS * WORDS_PER_POINTER == 1 * WORDS,
-                "This struct assumes a pointer is one word.");
+  //MSVC12 hates this
+#if !KJ_VS12
+  static_assert(1 * POINTERS * WORDS_PER_POINTER == 1 * WORDS, "This struct assumes a pointer is one word.");
+#endif
+  
   word tag;
   // Contains an encoded WirePointer representing this object.  WirePointer is defined in
   // layout.c++, but fits in a word.
@@ -1173,14 +1182,14 @@ inline PointerReader ListReader::getPointerElement(ElementCount index) const {
 
 // -------------------------------------------------------------------
 
-inline OrphanBuilder::OrphanBuilder(OrphanBuilder&& other) noexcept
+inline OrphanBuilder::OrphanBuilder(OrphanBuilder&& other) KJ_NOEXCEPT
     : segment(other.segment), capTable(other.capTable), location(other.location) {
   memcpy(&tag, &other.tag, sizeof(tag));  // Needs memcpy to comply with aliasing rules.
   other.segment = nullptr;
   other.location = nullptr;
 }
 
-inline OrphanBuilder::~OrphanBuilder() noexcept(false) {
+inline OrphanBuilder::~OrphanBuilder() KJ_NOEXCEPT_IF(false) {
   if (segment != nullptr) euthanize();
 }
 

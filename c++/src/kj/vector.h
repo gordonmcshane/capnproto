@@ -44,6 +44,20 @@ public:
   inline Vector() = default;
   inline explicit Vector(size_t capacity): builder(heapArrayBuilder<T>(capacity)) {}
 
+#if KJ_VS12
+  
+  Vector(Vector&& other)
+    : builder(kj::mv(other.builder))
+  {}
+
+  Vector& operator=(Vector&& rhs)
+  {
+    builder = kj::mv(rhs.builder);
+	  return *this;
+  }
+
+#endif
+
   inline operator ArrayPtr<T>() { return builder; }
   inline operator ArrayPtr<const T>() const { return builder; }
   inline ArrayPtr<T> asPtr() { return builder.asPtr(); }

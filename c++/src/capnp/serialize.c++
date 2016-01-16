@@ -211,7 +211,7 @@ InputStreamMessageReader::InputStreamMessageReader(
   }
 }
 
-InputStreamMessageReader::~InputStreamMessageReader() noexcept(false) {
+InputStreamMessageReader::~InputStreamMessageReader() KJ_NOEXCEPT_IF(false) {
   if (readPos != nullptr) {
     unwindDetector.catchExceptionsIfUnwinding([&]() {
       // Note that lazy reads only happen when we have multiple segments, so moreSegments.back() is
@@ -280,7 +280,7 @@ void writeMessage(kj::OutputStream& output, kj::ArrayPtr<const kj::ArrayPtr<cons
 
 // =======================================================================================
 
-StreamFdMessageReader::~StreamFdMessageReader() noexcept(false) {}
+StreamFdMessageReader::~StreamFdMessageReader() KJ_NOEXCEPT_IF(false) {}
 
 void writeMessageToFd(int fd, kj::ArrayPtr<const kj::ArrayPtr<const word>> segments) {
   kj::FdOutputStream stream(fd);

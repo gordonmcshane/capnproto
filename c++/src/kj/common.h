@@ -61,8 +61,8 @@
     #endif
   #endif
 #elif defined(_MSC_VER)
-  #if _MSC_VER < 1900
-    #error "You need Visual Studio 2015 or better to compile this code."
+  #if _MSC_VER < 1800
+    #error "You need Visual Studio 2013 or better to compile this code."
   #elif !CAPNP_LITE
     // TODO(cleanup): This is KJ, but we're talking about Cap'n Proto.
     #error "As of this writing, Cap'n Proto only supports Visual C++ in 'lite mode'; please #define CAPNP_LITE"
@@ -76,6 +76,7 @@
 
 #include <stddef.h>
 #include <initializer_list>
+#include <type_traits>
 
 #if __linux__ && __cplusplus > 201200L
 // Hack around stdlib bug with C++14 that exists on some Linux systems.
@@ -270,13 +271,7 @@ KJ_NORETURN(void unreachable());
 // Create a unique identifier name.  We use concatenate __LINE__ rather than __COUNTER__ so that
 // the name can be used multiple times in the same macro.
 
-#if _MSC_VER
-
-#define KJ_CONSTEXPR(...) __VA_ARGS__
-// Use in cases where MSVC barfs on constexpr. A replacement keyword (e.g. "const") can be
-// provided, or just leave blank to remove the keyword entirely.
-//
-// TODO(msvc): Remove this hack once MSVC fully supports constexpr.
+#if defined(_MSC_VER)
 
 #ifndef __restrict__
 #define __restrict__ __restrict
@@ -292,9 +287,47 @@ KJ_NORETURN(void unreachable());
 // Warns when a parameter name shadows a class member. Unfortunately my code does this a lot,
 // since I don't use a special name format for members.
 
-#else  // _MSC_VER
-#define KJ_CONSTEXPR(...) constexpr
+#if _MSC_VER < 1900
+
+#define KJ_CONSTEXPR(...) __VA_ARGS__
+#define KJ_CONSTEXPR_VS14(...) __VA_ARGS__
+// Use in cases where MSVC barfs on constexpr. A replacement keyword (e.g. "const") can be
+// provided, or just leave blank to remove the keyword entirely.
+//
+// TODO(msvc): Remove this hack once MSVC fully supports constexpr.
+
+#define KJ_VS12 1
+#define KJ_REF_QUALIFIERS 0
+#define KJ_NOEXCEPT
+#define KJ_NOEXCEPT_OR_NOTHROW throw()
+#define KJ_NOEXCEPT_IF(Predicate)
+#define KJ_NOEXCEPT_EXPR(Expression) false
+
+#else
+
+#define KJ_VS12 0
+#define KJ_CONSTEXPR_VS14(...) constexpr
+#define KJ_CONSTEXPR(...) __VA_ARGS__
+#define KJ_REF_QUALIFIERS 1
+#define KJ_NOEXCEPT noexcept
+#define KJ_NOEXCEPT_OR_NOTHROW noexcept
+#define KJ_NOEXCEPT_IF(Predicate) noexcept((Predicate))
+#define KJ_NOEXCEPT_EXPR(Expression) noexcept((Expression))
+
 #endif
+
+#else  // _MSC_VER
+
+#define KJ_VS12 0
+#define KJ_CONSTEXPR(...) constexpr
+#define KJ_CONSTEXPR_VS14(...) constexpr
+#define KJ_REF_QUALIFIERS 1
+#define KJ_NOEXCEPT noexcept
+#define KJ_NOEXCEPT_OR_NOTHROW noexcept
+#define KJ_NOEXCEPT_IF(Predicate) noexcept((Predicate))
+#define KJ_NOEXCEPT_EXPR(Expression) noexcept((Expression))
+
+#endif // _MSC_VER
 
 // =======================================================================================
 // Template metaprogramming helpers.
@@ -308,10 +341,10 @@ template <typename T> struct RemoveConst_ { typedef T Type; };
 template <typename T> struct RemoveConst_<const T> { typedef T Type; };
 template <typename T> using RemoveConst = typename RemoveConst_<T>::Type;
 
-template <typename> struct IsLvalueReference_ { static constexpr bool value = false; };
-template <typename T> struct IsLvalueReference_<T&> { static constexpr bool value = true; };
+template <typename> struct IsLvalueReference_ { static KJ_CONSTEXPR_VS14(const) bool value{false}; };
+template <typename T> struct IsLvalueReference_<T&> { static KJ_CONSTEXPR_VS14(const) bool value{true}; };
 template <typename T>
-inline constexpr bool isLvalueReference() { return IsLvalueReference_<T>::value; }
+inline KJ_CONSTEXPR_VS14() bool isLvalueReference() { return IsLvalueReference_<T>::value; }
 
 template <typename T> struct Decay_ { typedef T Type; };
 template <typename T> struct Decay_<T&> { typedef typename Decay_<T>::Type Type; };
@@ -333,7 +366,7 @@ template <bool b> using EnableIf = typename EnableIf_<b>::Type;
 //     void func(T&& t);
 
 template <typename T>
-T instance() noexcept;
+T instance() KJ_NOEXCEPT;
 // Like std::declval, but doesn't transform T into an rvalue reference.  If you want that, specify
 // instance<T&&>().
 
@@ -356,9 +389,14 @@ struct DisallowConstCopy {
 
   DisallowConstCopy() = default;
   DisallowConstCopy(DisallowConstCopy&) = default;
-  DisallowConstCopy(DisallowConstCopy&&) = default;
   DisallowConstCopy& operator=(DisallowConstCopy&) = default;
+  #if KJ_VS12
+  DisallowConstCopy(DisallowConstCopy&&) {}
+  DisallowConstCopy& operator=(DisallowConstCopy&&) { return *this; }
+  #else
+  DisallowConstCopy(DisallowConstCopy&&) = default;
   DisallowConstCopy& operator=(DisallowConstCopy&&) = default;
+  #endif
 };
 
 template <typename T>
@@ -371,9 +409,9 @@ struct DisallowConstCopyIfNotConst: public DisallowConstCopy {
 template <typename T>
 struct DisallowConstCopyIfNotConst<const T> {};
 
-template <typename T> struct IsConst_ { static constexpr bool value = false; };
-template <typename T> struct IsConst_<const T> { static constexpr bool value = true; };
-template <typename T> constexpr bool isConst() { return IsConst_<T>::value; }
+template <typename T> struct IsConst_ { static KJ_CONSTEXPR_VS14(const) bool value{false}; };
+template <typename T> struct IsConst_<const T> { static KJ_CONSTEXPR_VS14(const) bool value{ true }; };
+template <typename T> KJ_CONSTEXPR_VS14() bool isConst() { return IsConst_<T>::value; }
 
 template <typename T> struct EnableIfNotConst_ { typedef T Type; };
 template <typename T> struct EnableIfNotConst_<const T>;
@@ -387,9 +425,9 @@ template <typename T> struct RemoveConstOrDisable_ { struct Type; };
 template <typename T> struct RemoveConstOrDisable_<const T> { typedef T Type; };
 template <typename T> using RemoveConstOrDisable = typename RemoveConstOrDisable_<T>::Type;
 
-template <typename T> struct IsReference_ { static constexpr bool value = false; };
-template <typename T> struct IsReference_<T&> { static constexpr bool value = true; };
-template <typename T> constexpr bool isReference() { return IsReference_<T>::value; }
+template <typename T> struct IsReference_ { static KJ_CONSTEXPR_VS14(const) bool value = false; };
+template <typename T> struct IsReference_<T&> { static KJ_CONSTEXPR_VS14(const) bool value = true; };
+template <typename T> KJ_CONSTEXPR_VS14() bool isReference() { return IsReference_<T>::value; }
 
 template <typename From, typename To>
 struct PropagateConst_ { typedef To Type; };
@@ -421,7 +459,7 @@ struct CanConvert_ {
 };
 
 template <typename T, typename U>
-constexpr bool canConvert() {
+KJ_CONSTEXPR_VS14(const) bool canConvert() {
   return sizeof(CanConvert_<U>::sfinae(instance<T>())) == sizeof(int);
 }
 
@@ -437,9 +475,15 @@ constexpr bool canMemcpy() {
   // provides these admittedly-better intrinsics, but GCC does not.
   return __is_trivially_constructible(T, const T&) && __is_trivially_assignable(T, const T&);
 }
+#elif KJ_VS12
+template <typename T>
+struct CanMemCpy {
+  static const bool Value = __has_trivial_copy(T) && __has_trivial_assign(T);
+};
+
 #else
 template <typename T>
-constexpr bool canMemcpy() {
+KJ_CONSTEXPR_VS14(const) bool canMemcpy() {
   // Returns true if T can be copied using memcpy instead of using the copy constructor or
   // assignment operator.
 
@@ -456,11 +500,11 @@ constexpr bool canMemcpy() {
 // that the cost of typing more letters outweighs the cost of being slightly harder to understand
 // when first encountered.
 
-template<typename T> constexpr T&& mv(T& t) noexcept { return static_cast<T&&>(t); }
-template<typename T> constexpr T&& fwd(NoInfer<T>& t) noexcept { return static_cast<T&&>(t); }
+template<typename T> KJ_CONSTEXPR_VS14() T&& mv(T& t) KJ_NOEXCEPT { return static_cast<T&&>(t); }
+template<typename T> KJ_CONSTEXPR_VS14() T&& fwd(NoInfer<T>& t) KJ_NOEXCEPT { return static_cast<T&&>(t); }
 
-template<typename T> constexpr T cp(T& t) noexcept { return t; }
-template<typename T> constexpr T cp(const T& t) noexcept { return t; }
+template<typename T> KJ_CONSTEXPR_VS14() T cp(T& t) KJ_NOEXCEPT{ return t; }
+template<typename T> KJ_CONSTEXPR_VS14() T cp(const T& t) KJ_NOEXCEPT{ return t; }
 // Useful to force a copy, particularly to pass into a function that expects T&&.
 
 template <typename T, typename U, bool takeT> struct MinType_;
@@ -485,32 +529,32 @@ using MaxType = typename MaxType_<T, U, sizeof(T) >= sizeof(U)>::Type;
 // Resolves to the larger of the two input types.
 
 template <typename T, typename U>
-inline KJ_CONSTEXPR() auto max(T&& a, U&& b) -> MaxType<Decay<T>, Decay<U>> {
+inline KJ_CONSTEXPR_VS14() auto max(T&& a, U&& b) -> MaxType<Decay<T>, Decay<U>> {
   return a > b ? MaxType<Decay<T>, Decay<U>>(a) : MaxType<Decay<T>, Decay<U>>(b);
 }
 
 template <typename T, size_t s>
-inline constexpr size_t size(T (&arr)[s]) { return s; }
+inline KJ_CONSTEXPR_VS14(const) size_t size(T(&arr)[s]) { return s; }
 template <typename T>
-inline constexpr size_t size(T&& arr) { return arr.size(); }
+inline KJ_CONSTEXPR_VS14(const) size_t size(T&& arr) { return arr.size(); }
 // Returns the size of the parameter, whether the parameter is a regular C array or a container
 // with a `.size()` method.
 
 class MaxValue_ {
 private:
   template <typename T>
-  inline constexpr T maxSigned() const {
+  inline KJ_CONSTEXPR_VS14(const) T maxSigned() const {
     return (1ull << (sizeof(T) * 8 - 1)) - 1;
   }
   template <typename T>
-  inline constexpr T maxUnsigned() const {
+  inline KJ_CONSTEXPR_VS14(const) T maxUnsigned() const {
     return ~static_cast<T>(0u);
   }
 
 public:
 #define _kJ_HANDLE_TYPE(T) \
-  inline constexpr operator   signed T() const { return MaxValue_::maxSigned  <  signed T>(); } \
-  inline constexpr operator unsigned T() const { return MaxValue_::maxUnsigned<unsigned T>(); }
+  inline KJ_CONSTEXPR_VS14() operator   signed T() const { return MaxValue_::maxSigned  <  signed T>(); } \
+  inline KJ_CONSTEXPR_VS14() operator unsigned T() const { return MaxValue_::maxUnsigned<unsigned T>(); }
   _kJ_HANDLE_TYPE(char)
   _kJ_HANDLE_TYPE(short)
   _kJ_HANDLE_TYPE(int)
@@ -518,7 +562,7 @@ public:
   _kJ_HANDLE_TYPE(long long)
 #undef _kJ_HANDLE_TYPE
 
-  inline constexpr operator char() const {
+  inline KJ_CONSTEXPR_VS14() operator char() const {
     // `char` is different from both `signed char` and `unsigned char`, and may be signed or
     // unsigned on different platforms.  Ugh.
     return char(-1) < 0 ? MaxValue_::maxSigned<char>()
@@ -529,18 +573,18 @@ public:
 class MinValue_ {
 private:
   template <typename T>
-  inline constexpr T minSigned() const {
+  inline KJ_CONSTEXPR_VS14(const) T minSigned() const {
     return 1ull << (sizeof(T) * 8 - 1);
   }
   template <typename T>
-  inline constexpr T minUnsigned() const {
+  inline KJ_CONSTEXPR_VS14(const) T minUnsigned() const {
     return 0u;
   }
 
 public:
 #define _kJ_HANDLE_TYPE(T) \
-  inline constexpr operator   signed T() const { return MinValue_::minSigned  <  signed T>(); } \
-  inline constexpr operator unsigned T() const { return MinValue_::minUnsigned<unsigned T>(); }
+  inline KJ_CONSTEXPR_VS14() operator   signed T() const { return MinValue_::minSigned  <  signed T>(); } \
+  inline KJ_CONSTEXPR_VS14() operator unsigned T() const { return MinValue_::minUnsigned<unsigned T>(); }
   _kJ_HANDLE_TYPE(char)
   _kJ_HANDLE_TYPE(short)
   _kJ_HANDLE_TYPE(int)
@@ -548,7 +592,7 @@ public:
   _kJ_HANDLE_TYPE(long long)
 #undef _kJ_HANDLE_TYPE
 
-  inline constexpr operator char() const {
+  inline KJ_CONSTEXPR_VS14() operator char() const {
     // `char` is different from both `signed char` and `unsigned char`, and may be signed or
     // unsigned on different platforms.  Ugh.
     return char(-1) < 0 ? MinValue_::minSigned<char>()
@@ -556,14 +600,14 @@ public:
   }
 };
 
-static KJ_CONSTEXPR(const) MaxValue_ maxValue = MaxValue_();
+static KJ_CONSTEXPR_VS14(const) MaxValue_ maxValue = MaxValue_();
 // A special constant which, when cast to an integer type, takes on the maximum possible value of
 // that type.  This is useful to use as e.g. a parameter to a function because it will be robust
 // in the face of changes to the parameter's type.
 //
 // `char` is not supported, but `signed char` and `unsigned char` are.
 
-static KJ_CONSTEXPR(const) MinValue_ minValue = MinValue_();
+static KJ_CONSTEXPR_VS14(const) MinValue_ minValue = MinValue_();
 // A special constant which, when cast to an integer type, takes on the minimum possible value
 // of that type.  This is useful to use as e.g. a parameter to a function because it will be robust
 // in the face of changes to the parameter's type.
@@ -571,15 +615,15 @@ static KJ_CONSTEXPR(const) MinValue_ minValue = MinValue_();
 // `char` is not supported, but `signed char` and `unsigned char` are.
 
 #if __GNUC__
-inline constexpr float inf() { return __builtin_huge_valf(); }
-inline constexpr float nan() { return __builtin_nanf(""); }
+inline KJ_CONSTEXPR(const) float inf() { return __builtin_huge_valf(); }
+inline KJ_CONSTEXPR(const) float nan() { return __builtin_nanf(""); }
 
 #elif _MSC_VER
 
 // Do what MSVC math.h does
 #pragma warning(push)
 #pragma warning(disable: 4756)  // "overflow in constant arithmetic"
-inline constexpr float inf() { return (float)(1e300 * 1e300); }
+inline KJ_CONSTEXPR_VS14(const) float inf() { return (float)(1e300 * 1e300); }
 #pragma warning(pop)
 
 float nan();
@@ -594,8 +638,8 @@ float nan();
 #error "Not sure how to support your compiler."
 #endif
 
-inline constexpr bool isNaN(float f) { return f != f; }
-inline constexpr bool isNaN(double f) { return f != f; }
+inline KJ_CONSTEXPR_VS14(const) bool isNaN(float f) { return f != f; }
+inline KJ_CONSTEXPR_VS14(const) bool isNaN(double f) { return f != f; }
 
 // =======================================================================================
 // Useful fake containers
@@ -603,7 +647,7 @@ inline constexpr bool isNaN(double f) { return f != f; }
 template <typename T>
 class Range {
 public:
-  inline constexpr Range(const T& begin, const T& end): begin_(begin), end_(end) {}
+  inline KJ_CONSTEXPR_VS14() Range(const T& begin, const T& end) : begin_(begin), end_(end) {}
 
   class Iterator {
   public:
@@ -644,7 +688,7 @@ private:
 };
 
 template <typename T>
-inline constexpr Range<Decay<T>> range(T begin, T end) { return Range<Decay<T>>(begin, end); }
+inline KJ_CONSTEXPR_VS14(const) Range<Decay<T>> range(T begin, T end) { return Range<Decay<T>>(begin, end); }
 // Returns a fake iterable container containing all values of T from `begin` (inclusive) to `end`
 // (exclusive).  Example:
 //
@@ -652,7 +696,7 @@ inline constexpr Range<Decay<T>> range(T begin, T end) { return Range<Decay<T>>(
 //     for (int i: kj::range(1, 10)) { print(i); }
 
 template <typename T>
-inline constexpr Range<size_t> indices(T&& container) {
+inline KJ_CONSTEXPR_VS14(const) Range<size_t> indices(T&& container) {
   // Shortcut for iterating over the indices of a container:
   //
   //     for (size_t i: kj::indices(myArray)) { handle(myArray[i]); }
@@ -663,7 +707,7 @@ inline constexpr Range<size_t> indices(T&& container) {
 template <typename T>
 class Repeat {
 public:
-  inline constexpr Repeat(const T& value, size_t count): value(value), count(count) {}
+  inline KJ_CONSTEXPR_VS14() Repeat(const T& value, size_t count): value(value), count(count) {}
 
   class Iterator {
   public:
@@ -705,7 +749,7 @@ private:
 };
 
 template <typename T>
-inline constexpr Repeat<Decay<T>> repeat(T&& value, size_t count) {
+inline KJ_CONSTEXPR_VS14(const) Repeat<Decay<T>> repeat(T&& value, size_t count) {
   // Returns a fake iterable which contains `count` repeats of `value`.  Useful for e.g. creating
   // a bunch of spaces:  `kj::repeat(' ', indent * 2)`
 
@@ -726,11 +770,11 @@ struct PlacementNew {};
 }  // namespace _ (private)
 } // namespace kj
 
-inline void* operator new(size_t, kj::_::PlacementNew, void* __p) noexcept {
+inline void* operator new(size_t, kj::_::PlacementNew, void* __p) KJ_NOEXCEPT {
   return __p;
 }
 
-inline void operator delete(void*, kj::_::PlacementNew, void* __p) noexcept {}
+inline void operator delete(void*, kj::_::PlacementNew, void* __p) KJ_NOEXCEPT {}
 
 namespace kj {
 
@@ -773,13 +817,44 @@ class Maybe;
 
 namespace _ {  // private
 
+union MaxAlign
+{
+  int                 i;
+  long                l;
+  long long           ll;
+  long double         ld;
+  double              d;
+  void*               p;
+  void(*pf)();
+  MaxAlign*           ps;
+};
+
+template<typename T>
+class NoLifecycleWrapper
+{
+public:
+  using pointer = typename ::std::add_pointer<T>::type;
+  NoLifecycleWrapper() = default;
+  NoLifecycleWrapper(const NoLifecycleWrapper&) = delete;
+
+  T& get() { return *reinterpret_cast<pointer>(value); }
+  T* operator&() { return reinterpret_cast<pointer>(value); }
+
+private:
+  union
+  {
+    MaxAlign alignmentDummy;
+    unsigned char value[sizeof(T)];
+  };
+};
+
 template <typename T>
 class NullableValue {
   // Class whose interface behaves much like T*, but actually contains an instance of T and a
   // boolean flag indicating nullness.
 
 public:
-  inline NullableValue(NullableValue&& other) noexcept(noexcept(T(instance<T&&>())))
+  inline NullableValue(NullableValue&& other) KJ_NOEXCEPT_IF(KJ_NOEXCEPT_EXPR(T(instance<T&&>())))
       : isSet(other.isSet) {
     if (isSet) {
       ctor(value, kj::mv(other.value));
@@ -788,7 +863,7 @@ public:
   inline NullableValue(const NullableValue& other)
       : isSet(other.isSet) {
     if (isSet) {
-      ctor(value, other.value);
+     ctor(value, other.value);
     }
   }
   inline NullableValue(NullableValue& other)
@@ -797,16 +872,19 @@ public:
       ctor(value, other.value);
     }
   }
-  inline ~NullableValue() noexcept(noexcept(instance<T&>().~T())) {
+  inline ~NullableValue() KJ_NOEXCEPT_IF(KJ_NOEXCEPT_EXPR(instance<T&>().~T())) {
     if (isSet) {
       dtor(value);
     }
   }
 
+#if KJ_REF_QUALIFIERS
   inline T& operator*() & { return value; }
   inline const T& operator*() const & { return value; }
   inline T&& operator*() && { return kj::mv(value); }
   inline const T&& operator*() const && { return kj::mv(value); }
+#endif
+
   inline T* operator->() { return &value; }
   inline const T* operator->() const { return &value; }
   inline operator T*() { return isSet ? &value : nullptr; }
@@ -824,8 +902,8 @@ public:
   }
 
 private:  // internal interface used by friends only
-  inline NullableValue() noexcept: isSet(false) {}
-  inline NullableValue(T&& t) noexcept(noexcept(T(instance<T&&>())))
+  inline NullableValue() KJ_NOEXCEPT: isSet(false) {}
+  inline NullableValue(T&& t) KJ_NOEXCEPT_IF(KJ_NOEXCEPT_EXPR(T(instance<T&&>())))
       : isSet(true) {
     ctor(value, kj::mv(t));
   }
@@ -842,7 +920,7 @@ private:  // internal interface used by friends only
     if (isSet) ctor(value, *t);
   }
   template <typename U>
-  inline NullableValue(NullableValue<U>&& other) noexcept(noexcept(T(instance<U&&>())))
+  inline NullableValue(NullableValue<U>&& other) KJ_NOEXCEPT_IF(KJ_NOEXCEPT_EXPR(T(instance<U&&>())))
       : isSet(other.isSet) {
     if (isSet) {
       ctor(value, kj::mv(other.value));
@@ -915,18 +993,25 @@ private:  // internal interface used by friends only
 private:
   bool isSet;
 
-#if _MSC_VER
+#if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable: 4624)
 // Warns that the anonymous union has a deleted destructor when T is non-trivial. This warning
 // seems broken.
 #endif
 
+#if KJ_VS12
+
+  NoLifecycleWrapper<T> valueHolder;
+  T& value{valueHolder.get()};
+
+#else
   union {
     T value;
   };
+#endif
 
-#if _MSC_VER
+#if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
 
@@ -962,16 +1047,17 @@ class Maybe {
 
 public:
   Maybe(): ptr(nullptr) {}
-  Maybe(T&& t) noexcept(noexcept(T(instance<T&&>()))): ptr(kj::mv(t)) {}
+  Maybe(T&& t) KJ_NOEXCEPT_IF(KJ_NOEXCEPT_EXPR(T(instance<T&&>()))): ptr(kj::mv(t)) {}
   Maybe(T& t): ptr(t) {}
   Maybe(const T& t): ptr(t) {}
-  Maybe(const T* t) noexcept: ptr(t) {}
-  Maybe(Maybe&& other) noexcept(noexcept(T(instance<T&&>()))): ptr(kj::mv(other.ptr)) {}
+  Maybe(const T* t) KJ_NOEXCEPT: ptr(t) {}
+  Maybe(Maybe&& other) KJ_NOEXCEPT_IF(KJ_NOEXCEPT_EXPR(T(instance<T&&>()))): ptr(kj::mv(other.ptr)) {}
   Maybe(const Maybe& other): ptr(other.ptr) {}
+
   Maybe(Maybe& other): ptr(other.ptr) {}
 
   template <typename U>
-  Maybe(Maybe<U>&& other) noexcept(noexcept(T(instance<U&&>()))) {
+  Maybe(Maybe<U>&& other) KJ_NOEXCEPT_IF(KJ_NOEXCEPT_EXPR(T(instance<U&&>()))) {
     KJ_IF_MAYBE(val, kj::mv(other)) {
       ptr = *val;
     }
@@ -983,7 +1069,7 @@ public:
     }
   }
 
-  Maybe(decltype(nullptr)) noexcept: ptr(nullptr) {}
+  Maybe(decltype(nullptr)) KJ_NOEXCEPT: ptr(nullptr) {}
 
   template <typename... Params>
   inline T& emplace(Params&&... params) {
@@ -995,7 +1081,9 @@ public:
   }
 
   inline Maybe& operator=(Maybe&& other) { ptr = kj::mv(other.ptr); return *this; }
+#ifndef _MSC_VER
   inline Maybe& operator=(Maybe& other) { ptr = other.ptr; return *this; }
+#endif
   inline Maybe& operator=(const Maybe& other) { ptr = other.ptr; return *this; }
 
   inline bool operator==(decltype(nullptr)) const { return ptr == nullptr; }
@@ -1015,6 +1103,8 @@ public:
       return *ptr;
     }
   }
+
+#if KJ_REF_QUALIFIERS
 
   template <typename Func>
   auto map(Func&& f) & -> Maybe<decltype(f(instance<T&>()))> {
@@ -1052,6 +1142,8 @@ public:
     }
   }
 
+#endif
+
 private:
   _::NullableValue<T> ptr;
 
@@ -1068,22 +1160,22 @@ private:
 template <typename T>
 class Maybe<T&>: public DisallowConstCopyIfNotConst<T> {
 public:
-  Maybe() noexcept: ptr(nullptr) {}
-  Maybe(T& t) noexcept: ptr(&t) {}
-  Maybe(T* t) noexcept: ptr(t) {}
+  Maybe() KJ_NOEXCEPT: ptr(nullptr) {}
+  Maybe(T& t) KJ_NOEXCEPT: ptr(&t) {}
+  Maybe(T* t) KJ_NOEXCEPT: ptr(t) {}
 
   template <typename U>
-  inline Maybe(Maybe<U&>& other) noexcept: ptr(other.ptr) {}
+  inline Maybe(Maybe<U&>& other) KJ_NOEXCEPT: ptr(other.ptr) {}
   template <typename U>
-  inline Maybe(const Maybe<const U&>& other) noexcept: ptr(other.ptr) {}
-  inline Maybe(decltype(nullptr)) noexcept: ptr(nullptr) {}
+  inline Maybe(const Maybe<const U&>& other) KJ_NOEXCEPT: ptr(other.ptr) {}
+  inline Maybe(decltype(nullptr)) KJ_NOEXCEPT: ptr(nullptr) {}
 
-  inline Maybe& operator=(T& other) noexcept { ptr = &other; return *this; }
-  inline Maybe& operator=(T* other) noexcept { ptr = other; return *this; }
+  inline Maybe& operator=(T& other) KJ_NOEXCEPT { ptr = &other; return *this; }
+  inline Maybe& operator=(T* other) KJ_NOEXCEPT { ptr = other; return *this; }
   template <typename U>
-  inline Maybe& operator=(Maybe<U&>& other) noexcept { ptr = other.ptr; return *this; }
+  inline Maybe& operator=(Maybe<U&>& other) KJ_NOEXCEPT { ptr = other.ptr; return *this; }
   template <typename U>
-  inline Maybe& operator=(const Maybe<const U&>& other) noexcept { ptr = other.ptr; return *this; }
+  inline Maybe& operator=(const Maybe<const U&>& other) KJ_NOEXCEPT { ptr = other.ptr; return *this; }
 
   inline bool operator==(decltype(nullptr)) const { return ptr == nullptr; }
   inline bool operator!=(decltype(nullptr)) const { return ptr != nullptr; }
@@ -1134,15 +1226,15 @@ class ArrayPtr: public DisallowConstCopyIfNotConst<T> {
   // and passing by value only copies the pointer, not the target.
 
 public:
-  inline constexpr ArrayPtr(): ptr(nullptr), size_(0) {}
-  inline constexpr ArrayPtr(decltype(nullptr)): ptr(nullptr), size_(0) {}
-  inline constexpr ArrayPtr(T* ptr, size_t size): ptr(ptr), size_(size) {}
-  inline constexpr ArrayPtr(T* begin, T* end): ptr(begin), size_(end - begin) {}
-  inline KJ_CONSTEXPR() ArrayPtr(::std::initializer_list<RemoveConstOrDisable<T>> init)
+  inline KJ_CONSTEXPR_VS14() ArrayPtr() : ptr(nullptr), size_(0) {}
+  inline KJ_CONSTEXPR_VS14() ArrayPtr(decltype(nullptr)) : ptr(nullptr), size_(0) {}
+  inline KJ_CONSTEXPR_VS14() ArrayPtr(T* ptr, size_t size) : ptr(ptr), size_(size) {}
+  inline KJ_CONSTEXPR_VS14() ArrayPtr(T* begin, T* end) : ptr(begin), size_(end - begin) {}
+  inline KJ_CONSTEXPR_VS14() ArrayPtr(::std::initializer_list<RemoveConstOrDisable<T>> init)
       : ptr(init.begin()), size_(init.size()) {}
 
   template <size_t size>
-  inline constexpr ArrayPtr(T (&native)[size]): ptr(native), size_(size) {}
+  inline KJ_CONSTEXPR_VS14() ArrayPtr(T(&native)[size]) : ptr(native), size_(size) {}
   // Construct an ArrayPtr from a native C-style array.
 
   inline operator ArrayPtr<const T>() const {
@@ -1209,13 +1301,13 @@ private:
 };
 
 template <typename T>
-inline constexpr ArrayPtr<T> arrayPtr(T* ptr, size_t size) {
+inline KJ_CONSTEXPR_VS14() ArrayPtr<T> arrayPtr(T* ptr, size_t size) {
   // Use this function to construct ArrayPtrs without writing out the type name.
   return ArrayPtr<T>(ptr, size);
 }
 
 template <typename T>
-inline constexpr ArrayPtr<T> arrayPtr(T* begin, T* end) {
+inline KJ_CONSTEXPR_VS14() ArrayPtr<T> arrayPtr(T* begin, T* end) {
   // Use this function to construct ArrayPtrs without writing out the type name.
   return ArrayPtr<T>(begin, end);
 }
@@ -1278,7 +1370,7 @@ template <typename Func>
 class Deferred {
 public:
   inline Deferred(Func&& func): func(kj::fwd<Func>(func)), canceled(false) {}
-  inline ~Deferred() noexcept(false) { if (!canceled) func(); }
+  inline ~Deferred() KJ_NOEXCEPT_IF(false) { if (!canceled) func(); }
   KJ_DISALLOW_COPY(Deferred);
 
   // This move constructor is usually optimized away by the compiler.

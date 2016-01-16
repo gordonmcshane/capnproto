@@ -41,7 +41,7 @@ public:
   explicit Thread(Function<void()> func);
   KJ_DISALLOW_COPY(Thread);
 
-  ~Thread() noexcept(false);
+  ~Thread() KJ_NOEXCEPT_IF(false);
 
 #if !_WIN32
   void sendSignal(int signo);

@@ -22,12 +22,16 @@
 #include "test.h"
 #include "main.h"
 #include "io.h"
-#include "miniposix.h"
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
 #ifndef _WIN32
 #include <sys/mman.h>
+#else
+#include "miniposix.h"
+#endif
+#if KJ_VS12
+#include <type_traits>
 #endif
 
 namespace kj {
@@ -225,15 +229,15 @@ public:
   MainFunc getMain() {
     return MainBuilder(context, "KJ Test Runner (version not applicable)",
         "Run all tests that have been linked into the binary with this test runner.")
-        .addOptionWithArg({'f', "filter"}, KJ_BIND_METHOD(*this, setFilter), "<file>[:<line>]",
-            "Run only the specified test case(s). You may use a '*' wildcard in <file>. You may "
-            "also omit any prefix of <file>'s path; test from all matching files will run. "
-            "You may specify multiple filters; any test matching at least one filter will run. "
-            "<line> may be a range, e.g. \"100-500\".")
-        .addOption({'l', "list"}, KJ_BIND_METHOD(*this, setList),
-            "List all test cases that would run, but don't run them. If --filter is specified "
-            "then only the match tests will be listed.")
-        .callAfterParsing(KJ_BIND_METHOD(*this, run))
+         .addOptionWithArg({'f', "filter"}, KJ_BIND_METHOD(*this, setFilter), "<file>[:<line>]",
+             "Run only the specified test case(s). You may use a '*' wildcard in <file>. You may "
+             "also omit any prefix of <file>'s path; test from all matching files will run. "
+             "You may specify multiple filters; any test matching at least one filter will run. "
+             "<line> may be a range, e.g. \"100-500\".")
+         .addOption({'l', "list"}, KJ_BIND_METHOD(*this, setList),
+             "List all test cases that would run, but don't run them. If --filter is specified "
+             "then only the match tests will be listed.")
+         .callAfterParsing(KJ_BIND_METHOD(*this, run))
         .build();
   }
 

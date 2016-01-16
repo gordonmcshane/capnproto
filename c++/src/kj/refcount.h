@@ -57,7 +57,7 @@ class Refcounted: private Disposer {
   //   Own<T> could also be nice.
 
 public:
-  virtual ~Refcounted() noexcept(false);
+  virtual ~Refcounted() KJ_NOEXCEPT_IF(false);
 
   inline bool isShared() const { return refcount > 1; }
   // Check if there are multiple references to this object. This is sometimes useful for deciding

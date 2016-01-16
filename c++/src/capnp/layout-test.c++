@@ -102,7 +102,7 @@ static const AlignedData<2> SUBSTRUCT_DEFAULT = {{0,0,0,0,1,0,0,0,  0,0,0,0,0,0,
 static const AlignedData<2> STRUCTLIST_ELEMENT_SUBSTRUCT_DEFAULT =
     {{0,0,0,0,1,0,0,0,  0,0,0,0,0,0,0,0}};
 
-static constexpr StructSize STRUCTLIST_ELEMENT_SIZE(1 * WORDS, 1 * POINTERS);
+static KJ_CONSTEXPR_VS14(const) StructSize STRUCTLIST_ELEMENT_SIZE(1 * WORDS, 1 * POINTERS);
 
 static void setupStruct(StructBuilder builder) {
   builder.setDataField<uint64_t>(0 * ELEMENTS, 0x1011121314151617ull);

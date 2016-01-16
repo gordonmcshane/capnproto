@@ -79,7 +79,7 @@ public:
         destroyElement(destroyElement) {}
   KJ_DISALLOW_COPY(ExceptionSafeArrayUtil);
 
-  inline ~ExceptionSafeArrayUtil() noexcept(false) {
+  inline ~ExceptionSafeArrayUtil() KJ_NOEXCEPT_IF(false) {
     if (constructedElementCount > 0) destroyAll();
   }
 
@@ -133,12 +133,12 @@ class Array {
 public:
   inline Array(): ptr(nullptr), size_(0), disposer(nullptr) {}
   inline Array(decltype(nullptr)): ptr(nullptr), size_(0), disposer(nullptr) {}
-  inline Array(Array&& other) noexcept
+  inline Array(Array&& other) KJ_NOEXCEPT
       : ptr(other.ptr), size_(other.size_), disposer(other.disposer) {
     other.ptr = nullptr;
     other.size_ = 0;
   }
-  inline Array(Array<RemoveConstOrDisable<T>>&& other) noexcept
+  inline Array(Array<RemoveConstOrDisable<T>>&& other) KJ_NOEXCEPT
       : ptr(other.ptr), size_(other.size_), disposer(other.disposer) {
     other.ptr = nullptr;
     other.size_ = 0;
@@ -147,7 +147,7 @@ public:
       : ptr(firstElement), size_(size), disposer(&disposer) {}
 
   KJ_DISALLOW_COPY(Array);
-  inline ~Array() noexcept { dispose(); }
+  inline ~Array() KJ_NOEXCEPT { dispose(); }
 
   inline operator ArrayPtr<T>() {
     return ArrayPtr<T>(ptr, size_);
@@ -319,8 +319,9 @@ public:
     other.pos = nullptr;
     other.endPtr = nullptr;
   }
+  
   KJ_DISALLOW_COPY(ArrayBuilder);
-  inline ~ArrayBuilder() noexcept(false) { dispose(); }
+  inline ~ArrayBuilder() KJ_NOEXCEPT_IF(false) { dispose(); }
 
   inline operator ArrayPtr<T>() {
     return arrayPtr(ptr, pos);
@@ -473,7 +474,7 @@ class CappedArray {
 
 public:
   inline KJ_CONSTEXPR() CappedArray(): currentSize(fixedSize) {}
-  inline explicit constexpr CappedArray(size_t s): currentSize(s) {}
+  inline explicit KJ_CONSTEXPR() CappedArray(size_t s) : currentSize(s) {}
 
   inline size_t size() const { return currentSize; }
   inline void setSize(size_t s) { KJ_IREQUIRE(s <= fixedSize); currentSize = s; }
@@ -564,6 +565,17 @@ struct HeapArrayDisposer::Allocate_<T, true, true> {
         sizeof(T), elementCount, capacity, nullptr, nullptr));
   }
 };
+
+#if KJ_VS12
+template <typename T>
+struct HeapArrayDisposer::Allocate_<T, true, false> {
+	static T* allocate(size_t elementCount, size_t capacity) {
+		return reinterpret_cast<T*>(allocateImpl(
+			sizeof(T), elementCount, capacity, nullptr, nullptr));
+	}
+};
+#endif
+
 template <typename T>
 struct HeapArrayDisposer::Allocate_<T, false, true> {
   static void construct(void* ptr) {
@@ -598,8 +610,13 @@ T* HeapArrayDisposer::allocateUninitialized(size_t count) {
   return Allocate_<T, true, true>::allocate(0, count);
 }
 
+#if KJ_VS12
+template <typename Element, typename Iterator, bool = kj::CanMemCpy<Element>::Value>
+#else
 template <typename Element, typename Iterator, bool = canMemcpy<Element>()>
+#endif
 struct CopyConstructArray_;
+
 
 template <typename T>
 struct CopyConstructArray_<T, T*, true> {
@@ -636,7 +653,7 @@ struct CopyConstructArray_<T, Iterator, false> {
     T* start;
     T* pos;
     inline explicit ExceptionGuard(T* pos): start(pos), pos(pos) {}
-    ~ExceptionGuard() noexcept(false) {
+    ~ExceptionGuard() KJ_NOEXCEPT_IF(false) {
       while (pos > start) {
         dtor(*--pos);
       }
@@ -647,7 +664,7 @@ struct CopyConstructArray_<T, Iterator, false> {
     // Verify that T can be *implicitly* constructed from the source values.
     if (false) implicitCast<T>(*start);
 
-    if (noexcept(T(*start))) {
+    if (KJ_NOEXCEPT_EXPR(T(*start))) {
       while (start != end) {
         ctor(*pos++, *start++);
       }
@@ -667,7 +684,11 @@ struct CopyConstructArray_<T, Iterator, false> {
 
 template <typename T, typename Iterator>
 inline T* copyConstructArray(T* dst, Iterator start, Iterator end) {
+#if KJ_VS12
+  return CopyConstructArray_<T, typename Decay_<Iterator>::Type>::apply(dst, start, end);
+#else
   return CopyConstructArray_<T, Decay<Iterator>>::apply(dst, start, end);
+#endif
 }
 
 }  // namespace _ (private)

@@ -248,7 +248,7 @@ class MainBuilder {
 public:
   MainBuilder(ProcessContext& context, StringPtr version,
               StringPtr briefDescription, StringPtr extendedDescription = nullptr);
-  ~MainBuilder() noexcept(false);
+  ~MainBuilder() KJ_NOEXCEPT_IF(false);
 
   class OptionName {
   public:
@@ -267,9 +267,23 @@ public:
 
   class Validity {
   public:
+
+#if KJ_VS12
+    Validity(Validity&& other)
+      : errorMessage(kj::mv(other.errorMessage))
+    {}
+
+    Validity& operator=(Validity&& rhs)
+    {
+      errorMessage = kj::mv(rhs.errorMessage);
+      return *this;
+    }
+#endif
+
     inline Validity(bool valid) {
       if (!valid) errorMessage = heapString("invalid argument");
     }
+    
     inline Validity(const char* errorMessage)
         : errorMessage(heapString(errorMessage)) {}
     inline Validity(String&& errorMessage)
@@ -277,7 +291,6 @@ public:
 
     inline const Maybe<String>& getError() const { return errorMessage; }
     inline Maybe<String> releaseError() { return kj::mv(errorMessage); }
-
   private:
     Maybe<String> errorMessage;
     friend class MainBuilder;

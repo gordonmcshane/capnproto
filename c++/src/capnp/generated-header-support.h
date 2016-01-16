@@ -82,14 +82,14 @@ struct RawBrandedSchema {
     };
 
     Binding() = default;
-    inline constexpr Binding(uint8_t which, uint16_t listDepth, const RawBrandedSchema* schema)
+    inline KJ_CONSTEXPR_VS14() Binding(uint8_t which, uint16_t listDepth, const RawBrandedSchema* schema)
         : which(which), isImplicitParameter(false), listDepth(listDepth), paramIndex(0),
           schema(schema) {}
-    inline constexpr Binding(uint8_t which, uint16_t listDepth,
+    inline KJ_CONSTEXPR_VS14() Binding(uint8_t which, uint16_t listDepth,
                              uint64_t scopeId, uint16_t paramIndex)
         : which(which), isImplicitParameter(false), listDepth(listDepth), paramIndex(paramIndex),
           scopeId(scopeId) {}
-    inline constexpr Binding(uint8_t which, uint16_t listDepth, uint16_t implicitParamIndex)
+    inline KJ_CONSTEXPR_VS14() Binding(uint8_t which, uint16_t listDepth, uint16_t implicitParamIndex)
         : which(which), isImplicitParameter(true), listDepth(listDepth),
           paramIndex(implicitParamIndex), scopeId(0) {}
   };
@@ -264,7 +264,7 @@ struct ChooseBrand;
 template <typename TypeTag>
 struct ChooseBrand<TypeTag> {
   // All params were AnyPointer. No specific brand needed.
-  static constexpr _::RawBrandedSchema const* brand = &TypeTag::schema->defaultBrand;
+  static KJ_CONSTEXPR_VS14() _::RawBrandedSchema const* brand = &TypeTag::schema->defaultBrand;
 };
 
 template <typename TypeTag, typename... Rest>
@@ -274,7 +274,7 @@ struct ChooseBrand<TypeTag, AnyPointer, Rest...>: public ChooseBrand<TypeTag, Re
 template <typename TypeTag, typename First, typename... Rest>
 struct ChooseBrand<TypeTag, First, Rest...> {
   // At least one parameter is not AnyPointer, so use the specificBrand constant.
-  static constexpr _::RawBrandedSchema const* brand = &TypeTag::specificBrand;
+  static KJ_CONSTEXPR_VS14() _::RawBrandedSchema const* brand = &TypeTag::specificBrand;
 };
 
 template <typename T, Kind k = kind<T>()>
@@ -283,7 +283,7 @@ struct BrandBindingFor_;
 #define HANDLE_TYPE(Type, which) \
   template <> \
   struct BrandBindingFor_<Type, Kind::PRIMITIVE> { \
-    static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) { \
+    static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) { \
       return { which, listDepth, nullptr }; \
     } \
   }
@@ -303,76 +303,76 @@ HANDLE_TYPE(double, 11);
 
 template <>
 struct BrandBindingFor_<Text, Kind::BLOB> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 12, listDepth, nullptr };
   }
 };
 
 template <>
 struct BrandBindingFor_<Data, Kind::BLOB> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 13, listDepth, nullptr };
   }
 };
 
 template <typename T>
 struct BrandBindingFor_<List<T>, Kind::LIST> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return BrandBindingFor_<T>::get(listDepth + 1);
   }
 };
 
 template <typename T>
 struct BrandBindingFor_<T, Kind::ENUM> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 15, listDepth, nullptr };
   }
 };
 
 template <typename T>
 struct BrandBindingFor_<T, Kind::STRUCT> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 16, listDepth, T::_capnpPrivate::brand };
   }
 };
 
 template <typename T>
 struct BrandBindingFor_<T, Kind::INTERFACE> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 17, listDepth, T::_capnpPrivate::brand };
   }
 };
 
 template <>
 struct BrandBindingFor_<AnyPointer, Kind::OTHER> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 18, listDepth, 0, 0 };
   }
 };
 
 template <>
 struct BrandBindingFor_<AnyStruct, Kind::OTHER> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 18, listDepth, 0, 1 };
   }
 };
 
 template <>
 struct BrandBindingFor_<AnyList, Kind::OTHER> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 18, listDepth, 0, 2 };
   }
 };
 
 template <>
 struct BrandBindingFor_<Capability, Kind::OTHER> {
-  static constexpr RawBrandedSchema::Binding get(uint16_t listDepth) {
+  static KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding get(uint16_t listDepth) {
     return { 18, listDepth, 0, 3 };
   }
 };
 
 template <typename T>
-constexpr RawBrandedSchema::Binding brandBindingFor() {
+KJ_CONSTEXPR_VS14() RawBrandedSchema::Binding brandBindingFor() {
   return BrandBindingFor_<T>::get(0);
 }
 
@@ -398,7 +398,7 @@ class ConstStruct {
 public:
   ConstStruct() = delete;
   KJ_DISALLOW_COPY(ConstStruct);
-  inline explicit constexpr ConstStruct(const word* ptr): ptr(ptr) {}
+  inline explicit KJ_CONSTEXPR_VS14() ConstStruct(const word* ptr): ptr(ptr) {}
 
   inline typename T::Reader get() const {
     return AnyPointer::Reader(PointerReader::getRootUnchecked(ptr)).getAs<T>();
@@ -417,7 +417,7 @@ class ConstList {
 public:
   ConstList() = delete;
   KJ_DISALLOW_COPY(ConstList);
-  inline explicit constexpr ConstList(const word* ptr): ptr(ptr) {}
+  inline explicit KJ_CONSTEXPR_VS14() ConstList(const word* ptr): ptr(ptr) {}
 
   inline typename List<T>::Reader get() const {
     return AnyPointer::Reader(PointerReader::getRootUnchecked(ptr)).getAs<List<T>>();
@@ -436,7 +436,7 @@ class ConstText {
 public:
   ConstText() = delete;
   KJ_DISALLOW_COPY(ConstText);
-  inline explicit constexpr ConstText(const word* ptr): ptr(ptr) {}
+  inline explicit KJ_CONSTEXPR_VS14() ConstText(const word* ptr): ptr(ptr) {}
 
   inline Text::Reader get() const {
     return Text::Reader(reinterpret_cast<const char*>(ptr), size);
@@ -464,7 +464,7 @@ class ConstData {
 public:
   ConstData() = delete;
   KJ_DISALLOW_COPY(ConstData);
-  inline explicit constexpr ConstData(const word* ptr): ptr(ptr) {}
+  inline explicit KJ_CONSTEXPR_VS14() ConstData(const word* ptr): ptr(ptr) {}
 
   inline Data::Reader get() const {
     return Data::Reader(reinterpret_cast<const byte*>(ptr), size);
@@ -486,14 +486,14 @@ inline auto KJ_STRINGIFY(const ConstData<size>& s) -> decltype(kj::toCharSequenc
 }  // namespace _ (private)
 
 template <typename T, typename CapnpPrivate = typename T::_capnpPrivate>
-inline constexpr uint64_t typeId() { return CapnpPrivate::typeId; }
+inline KJ_CONSTEXPR_VS14() uint64_t typeId() { return CapnpPrivate::typeId; }
 template <typename T, uint64_t id = schemas::EnumInfo<T>::typeId>
-inline constexpr uint64_t typeId() { return id; }
+inline KJ_CONSTEXPR_VS14() uint64_t typeId() { return id; }
 // typeId<MyType>() returns the type ID as defined in the schema.  Works with structs, enums, and
 // interfaces.
 
 template <typename T>
-inline constexpr uint sizeInWords() {
+inline KJ_CONSTEXPR_VS14() uint sizeInWords() {
   // Return the size, in words, of a Struct type, if allocated free-standing (not in a list).
   // May be useful for pre-computing space needed in order to precisely allocate messages.
 
@@ -525,7 +525,7 @@ inline constexpr uint sizeInWords() {
     } \
     template <> struct EnumInfo<type##_##id> { \
       struct IsEnum; \
-      static constexpr uint64_t typeId = 0x##id; \
+      static KJ_CONSTEXPR_VS14(const) uint64_t typeId = 0x##id; \
       static inline ::capnp::word const* encodedSchema() { return bp_##id; } \
     }
 
@@ -534,14 +534,14 @@ inline constexpr uint sizeInWords() {
 #define CAPNP_DEFINE_ENUM(type, id)
 #else
 #define CAPNP_DEFINE_ENUM(type, id) \
-    constexpr uint64_t EnumInfo<type>::typeId
+    KJ_CONSTEXPR_VS14() uint64_t EnumInfo<type>::typeId
 #endif
 
 #define CAPNP_DECLARE_STRUCT_HEADER(id, dataWordSize_, pointerCount_) \
       struct IsStruct; \
-      static constexpr uint64_t typeId = 0x##id; \
-      static constexpr uint16_t dataWordSize = dataWordSize_; \
-      static constexpr uint16_t pointerCount = pointerCount_; \
+      static KJ_CONSTEXPR_VS14(const) uint64_t typeId = 0x##id; \
+      static KJ_CONSTEXPR_VS14(const) uint16_t dataWordSize = dataWordSize_; \
+      static KJ_CONSTEXPR_VS14(const) uint16_t pointerCount = pointerCount_; \
       static inline ::capnp::word const* encodedSchema() { return ::capnp::schemas::bp_##id; }
 
 #else  // CAPNP_LITE
@@ -556,29 +556,29 @@ inline constexpr uint sizeInWords() {
     } \
     template <> struct EnumInfo<type##_##id> { \
       struct IsEnum; \
-      static constexpr uint64_t typeId = 0x##id; \
+      static KJ_CONSTEXPR_VS14(const) uint64_t typeId = 0x##id; \
       static inline ::capnp::word const* encodedSchema() { return bp_##id; } \
-      static constexpr ::capnp::_::RawSchema const* schema = &s_##id; \
+      static KJ_CONSTEXPR_VS14(const) ::capnp::_::RawSchema const* schema = &s_##id; \
     }
 #define CAPNP_DEFINE_ENUM(type, id) \
-    constexpr uint64_t EnumInfo<type>::typeId; \
-    constexpr ::capnp::_::RawSchema const* EnumInfo<type>::schema
+    KJ_CONSTEXPR_VS14() uint64_t EnumInfo<type>::typeId; \
+    KJ_CONSTEXPR_VS14() ::capnp::_::RawSchema const* EnumInfo<type>::schema
 
 #define CAPNP_DECLARE_STRUCT_HEADER(id, dataWordSize_, pointerCount_) \
       struct IsStruct; \
-      static constexpr uint64_t typeId = 0x##id; \
-      static constexpr ::capnp::Kind kind = ::capnp::Kind::STRUCT; \
-      static constexpr uint16_t dataWordSize = dataWordSize_; \
-      static constexpr uint16_t pointerCount = pointerCount_; \
+      static KJ_CONSTEXPR_VS14(const) uint64_t typeId = 0x##id; \
+      static KJ_CONSTEXPR_VS14(const) ::capnp::Kind kind = ::capnp::Kind::STRUCT; \
+      static KJ_CONSTEXPR_VS14(const) uint16_t dataWordSize = dataWordSize_; \
+      static KJ_CONSTEXPR_VS14(const) uint16_t pointerCount = pointerCount_; \
       static inline ::capnp::word const* encodedSchema() { return ::capnp::schemas::bp_##id; } \
-      static constexpr ::capnp::_::RawSchema const* schema = &::capnp::schemas::s_##id;
+      static KJ_CONSTEXPR_VS14(const) ::capnp::_::RawSchema const* schema = &::capnp::schemas::s_##id;
 
 #define CAPNP_DECLARE_INTERFACE_HEADER(id) \
       struct IsInterface; \
-      static constexpr uint64_t typeId = 0x##id; \
-      static constexpr ::capnp::Kind kind = ::capnp::Kind::INTERFACE; \
+      static KJ_CONSTEXPR_VS14(const) uint64_t typeId = 0x##id; \
+      static KJ_CONSTEXPR_VS14(const) ::capnp::Kind kind = ::capnp::Kind::INTERFACE; \
       static inline ::capnp::word const* encodedSchema() { return ::capnp::schemas::bp_##id; } \
-      static constexpr ::capnp::_::RawSchema const* schema = &::capnp::schemas::s_##id;
+      static KJ_CONSTEXPR_VS14(const) ::capnp::_::RawSchema const* schema = &::capnp::schemas::s_##id;
 
 #endif  // CAPNP_LITE, else
 

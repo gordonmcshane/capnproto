@@ -99,7 +99,7 @@ public:
   // default value of "ReaderOptions()".  The base class constructor doesn't have a default value
   // in order to remind subclasses that they really need to give the user a way to provide this.
 
-  virtual ~MessageReader() noexcept(false);
+  virtual ~MessageReader() KJ_NOEXCEPT_IF(false);
 
   virtual kj::ArrayPtr<const word> getSegment(uint id) = 0;
   // Gets the segment with the given ID, or returns null if no such segment exists. This method
@@ -146,7 +146,7 @@ class MessageBuilder {
 
 public:
   MessageBuilder();
-  virtual ~MessageBuilder() noexcept(false);
+  virtual ~MessageBuilder() KJ_NOEXCEPT_IF(false);
   KJ_DISALLOW_COPY(MessageBuilder);
 
   struct SegmentInit {
@@ -312,7 +312,7 @@ public:
   // segments.  All arrays passed in must remain valid until the MessageReader is destroyed.
 
   KJ_DISALLOW_COPY(SegmentArrayMessageReader);
-  ~SegmentArrayMessageReader() noexcept(false);
+  ~SegmentArrayMessageReader() KJ_NOEXCEPT_IF(false);
 
   virtual kj::ArrayPtr<const word> getSegment(uint id) override;
 
@@ -336,8 +336,8 @@ enum class AllocationStrategy: uint8_t {
   // allocated for a message of size n is O(log n).
 };
 
-constexpr uint SUGGESTED_FIRST_SEGMENT_WORDS = 1024;
-constexpr AllocationStrategy SUGGESTED_ALLOCATION_STRATEGY = AllocationStrategy::GROW_HEURISTICALLY;
+KJ_CONSTEXPR_VS14(const) uint SUGGESTED_FIRST_SEGMENT_WORDS = 1024;
+KJ_CONSTEXPR_VS14(const) AllocationStrategy SUGGESTED_ALLOCATION_STRATEGY = AllocationStrategy::GROW_HEURISTICALLY;
 
 class MallocMessageBuilder: public MessageBuilder {
   // A simple MessageBuilder that uses malloc() (actually, calloc()) to allocate segments.  This
@@ -369,7 +369,7 @@ public:
   // over any space that was used so that it can be reused.
 
   KJ_DISALLOW_COPY(MallocMessageBuilder);
-  virtual ~MallocMessageBuilder() noexcept(false);
+  virtual ~MallocMessageBuilder() KJ_NOEXCEPT_IF(false);
 
   virtual kj::ArrayPtr<word> allocateSegment(uint minimumSize) override;
 
@@ -402,7 +402,7 @@ class FlatMessageBuilder: public MessageBuilder {
 public:
   explicit FlatMessageBuilder(kj::ArrayPtr<word> array);
   KJ_DISALLOW_COPY(FlatMessageBuilder);
-  virtual ~FlatMessageBuilder() noexcept(false);
+  virtual ~FlatMessageBuilder() KJ_NOEXCEPT_IF(false);
 
   void requireFilled();
   // Throws an exception if the flat array is not exactly full.

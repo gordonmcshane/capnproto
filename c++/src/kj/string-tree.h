@@ -125,8 +125,8 @@ char* fill(char* __restrict__ target, const StringTree& first, Rest&&... rest) {
   return fill(target + first.size(), kj::fwd<Rest>(rest)...);
 }
 
-template <typename T> constexpr bool isStringTree() { return false; }
-template <> constexpr bool isStringTree<StringTree>() { return true; }
+template <typename T> KJ_CONSTEXPR_VS14() bool isStringTree() { return false; }
+template <> KJ_CONSTEXPR_VS14(inline) bool isStringTree<StringTree>() { return true; }
 
 inline StringTree&& toStringTreeOrCharSequence(StringTree&& tree) { return kj::mv(tree); }
 inline StringTree toStringTreeOrCharSequence(String&& str) { return StringTree(kj::mv(str)); }

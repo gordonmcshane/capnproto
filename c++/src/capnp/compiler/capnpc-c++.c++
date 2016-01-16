@@ -1852,7 +1852,7 @@ private:
         (!hasBrandDependencies ? "" :
             "    static const ::capnp::_::RawBrandedSchema::Dependency brandDependencies[];\n"),
         "    static const ::capnp::_::RawBrandedSchema specificBrand;\n"
-        "    static constexpr ::capnp::_::RawBrandedSchema const* brand = "
+        "    static KJ_CONSTEXPR_VS14() ::capnp::_::RawBrandedSchema const* brand = "
         "::capnp::_::ChooseBrand<_capnpPrivate, ", templateContext.allArgs(), ">::brand;\n");
   }
 
@@ -2207,7 +2207,7 @@ private:
           makeGenericDefinitions(templates, fullName, kj::str(hexId), kj::mv(brandInitializers)));
     } else {
       declareText = kj::strTree(kj::mv(declareText),
-        "    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;\n");
+        "    static KJ_CONSTEXPR_VS14() ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;\n");
     }
 
     declareText = kj::strTree(kj::mv(declareText), "  };\n  #endif  // !CAPNP_LITE");
@@ -2403,7 +2403,7 @@ private:
       case schema::Value::ENUM:
         return ConstText {
           false,
-          kj::strTree("static constexpr ", typeName_, ' ', upperCase, " = ",
+          kj::strTree("static KJ_CONSTEXPR_VS14(const) ", typeName_, ' ', upperCase, " = ",
               literalValue(schema.getType(), constProto.getValue()), ";\n"),
           scope.size() == 0 ? kj::strTree() : kj::strTree(
               // TODO(msvc): MSVC doesn't like definitions of constexprs, but other compilers and

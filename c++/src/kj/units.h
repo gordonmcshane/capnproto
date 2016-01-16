@@ -53,15 +53,15 @@ struct Id {
 
   UnderlyingType value;
 
-  inline constexpr Id(): value(0) {}
-  inline constexpr explicit Id(int value): value(value) {}
+  inline KJ_CONSTEXPR_VS14() Id(): value(0) {}
+  inline KJ_CONSTEXPR_VS14() explicit Id(int value): value(value) {}
 
-  inline constexpr bool operator==(const Id& other) const { return value == other.value; }
-  inline constexpr bool operator!=(const Id& other) const { return value != other.value; }
-  inline constexpr bool operator<=(const Id& other) const { return value <= other.value; }
-  inline constexpr bool operator>=(const Id& other) const { return value >= other.value; }
-  inline constexpr bool operator< (const Id& other) const { return value <  other.value; }
-  inline constexpr bool operator> (const Id& other) const { return value >  other.value; }
+  inline KJ_CONSTEXPR_VS14(const) bool operator==(const Id& other) const { return value == other.value; }
+  inline KJ_CONSTEXPR_VS14(const) bool operator!=(const Id& other) const { return value != other.value; }
+  inline KJ_CONSTEXPR_VS14(const) bool operator<=(const Id& other) const { return value <= other.value; }
+  inline KJ_CONSTEXPR_VS14(const) bool operator>=(const Id& other) const { return value >= other.value; }
+  inline KJ_CONSTEXPR_VS14(const) bool operator< (const Id& other) const { return value <  other.value; }
+  inline KJ_CONSTEXPR_VS14(const) bool operator>(const Id& other) const { return value >  other.value; }
 };
 
 // =======================================================================================
@@ -357,7 +357,7 @@ private:
 #endif  // !_MSC_VER
 
 template <typename T>
-inline constexpr T unit() { return T(1); }
+inline KJ_CONSTEXPR_VS14(const) T unit() { return T(1); }
 // unit<Quantity<T, U>>() returns a Quantity of value 1.  It also, intentionally, works on basic
 // numeric types.
 

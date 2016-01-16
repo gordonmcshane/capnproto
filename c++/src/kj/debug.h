@@ -137,8 +137,7 @@ namespace kj {
 
 #define KJ_LOG(severity, ...) \
   if (!::kj::_::Debug::shouldLog(::kj::LogSeverity::severity)) {} else \
-    ::kj::_::Debug::log(__FILE__, __LINE__, ::kj::LogSeverity::severity, \
-                        "" #__VA_ARGS__, __VA_ARGS__)
+    ::kj::_::Debug::log(__FILE__, __LINE__, ::kj::LogSeverity::severity , "" # __VA_ARGS__ , __VA_ARGS__)
 
 #define KJ_DBG(...) KJ_EXPAND(KJ_LOG(DBG, __VA_ARGS__))
 
@@ -299,7 +298,7 @@ public:
           const char* condition, const char* macroArgs);
     Fault(const char* file, int line, int osErrorNumber,
           const char* condition, const char* macroArgs);
-    ~Fault() noexcept(false);
+    ~Fault() KJ_NOEXCEPT_IF(false);
 
     KJ_NOINLINE KJ_NORETURN(void fatal());
     // Throw the exception.
@@ -330,7 +329,7 @@ public:
   public:
     Context();
     KJ_DISALLOW_COPY(Context);
-    virtual ~Context() noexcept(false);
+    virtual ~Context() KJ_NOEXCEPT_IF(false);
 
     struct Value {
       const char* file;
@@ -339,6 +338,20 @@ public:
 
       inline Value(const char* file, int line, String&& description)
           : file(file), line(line), description(mv(description)) {}
+
+#if KJ_VS12
+      Value(Value&& other)
+        : file(other.file), line(other.line), description(mv(other.description))
+      {}
+
+      Value& operator=(Value&& rhs)
+      {
+        file = rhs.file;
+        line = rhs.line;
+        description = mv(rhs.description);
+        return *this;
+      }
+#endif
     };
 
     virtual Value evaluate() = 0;

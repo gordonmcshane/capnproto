@@ -27,9 +27,13 @@ namespace kj {
 namespace _ {  // private
 namespace {
 
+#ifndef _MSC_VER
+// Non-critical, doesn't work on Windows filesystems
 TEST(Exception, TrimSourceFilename) {
   EXPECT_EQ(trimSourceFilename(__FILE__), "kj/exception-test.c++");
 }
+
+#endif // _MSC_VER
 
 TEST(Exception, RunCatchingExceptions) {
   bool recovered = false;
@@ -60,7 +64,7 @@ TEST(Exception, RunCatchingExceptions) {
 
 class ThrowingDestructor: public UnwindDetector {
 public:
-  ~ThrowingDestructor() noexcept(false) {
+  ~ThrowingDestructor() KJ_NOEXCEPT_IF(false) {
     catchExceptionsIfUnwinding([]() {
       KJ_FAIL_ASSERT("this is a test, not a real bug");
     });

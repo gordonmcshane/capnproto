@@ -32,6 +32,12 @@
 
 namespace kj {
 
+#if KJ_VS12
+#define ALIGN_OF(x) _alignof(x)
+#else
+#define ALIGN_OF(x) alignof(x)
+#endif
+
 class Arena {
   // A class which allows several objects to be allocated in contiguous chunks of memory, then
   // frees them all at once.
@@ -51,7 +57,7 @@ public:
   // Allocates from the given scratch space first, only resorting to the heap when it runs out.
 
   KJ_DISALLOW_COPY(Arena);
-  ~Arena() noexcept(false);
+  ~Arena() KJ_NOEXCEPT_IF(false);
 
   template <typename T, typename... Params>
   T& allocate(Params&&... params);
@@ -119,7 +125,7 @@ private:
   template <typename T>
   static void destroyArray(void* pointer) {
     size_t elementCount = *reinterpret_cast<size_t*>(pointer);
-    KJ_CONSTEXPR(const) size_t prefixSize = kj::max(alignof(T), sizeof(size_t));
+    KJ_CONSTEXPR(const) size_t prefixSize = kj::max(ALIGN_OF(T), sizeof(size_t));
     DestructorOnlyArrayDisposer::instance.disposeImpl(
         reinterpret_cast<byte*>(pointer) + prefixSize,
         sizeof(T), elementCount, elementCount, &destroyObject<T>);
@@ -134,10 +140,11 @@ private:
 // =======================================================================================
 // Inline implementation details
 
+
 template <typename T, typename... Params>
 T& Arena::allocate(Params&&... params) {
   T& result = *reinterpret_cast<T*>(allocateBytes(
-      sizeof(T), alignof(T), !__has_trivial_destructor(T)));
+      sizeof(T), ALIGN_OF(T), !__has_trivial_destructor(T)));
   if (!__has_trivial_constructor(T) || sizeof...(Params) > 0) {
     ctor(result, kj::fwd<Params>(params)...);
   }
@@ -152,7 +159,7 @@ ArrayPtr<T> Arena::allocateArray(size_t size) {
   if (__has_trivial_destructor(T)) {
     ArrayPtr<T> result =
         arrayPtr(reinterpret_cast<T*>(allocateBytes(
-            sizeof(T) * size, alignof(T), false)), size);
+            sizeof(T) * size, ALIGN_OF(T), false)), size);
     if (!__has_trivial_constructor(T)) {
       for (size_t i = 0; i < size; i++) {
         ctor(result[i]);
@@ -161,8 +168,8 @@ ArrayPtr<T> Arena::allocateArray(size_t size) {
     return result;
   } else {
     // Allocate with a 64-bit prefix in which we store the array size.
-    KJ_CONSTEXPR(const) size_t prefixSize = kj::max(alignof(T), sizeof(size_t));
-    void* base = allocateBytes(sizeof(T) * size + prefixSize, alignof(T), true);
+    KJ_CONSTEXPR(const) size_t prefixSize = kj::max(ALIGN_OF(T), sizeof(size_t));
+    void* base = allocateBytes(sizeof(T) * size + prefixSize, ALIGN_OF(T), true);
     size_t& tag = *reinterpret_cast<size_t*>(base);
     ArrayPtr<T> result =
         arrayPtr(reinterpret_cast<T*>(reinterpret_cast<byte*>(base) + prefixSize), size);
@@ -185,7 +192,7 @@ ArrayPtr<T> Arena::allocateArray(size_t size) {
 
 template <typename T, typename... Params>
 Own<T> Arena::allocateOwn(Params&&... params) {
-  T& result = *reinterpret_cast<T*>(allocateBytes(sizeof(T), alignof(T), false));
+  T& result = *reinterpret_cast<T*>(allocateBytes(sizeof(T), ALIGN_OF(T), false));
   if (!__has_trivial_constructor(T) || sizeof...(Params) > 0) {
     ctor(result, kj::fwd<Params>(params)...);
   }
@@ -204,9 +211,10 @@ Array<T> Arena::allocateOwnArray(size_t size) {
 template <typename T>
 ArrayBuilder<T> Arena::allocateOwnArrayBuilder(size_t capacity) {
   return ArrayBuilder<T>(
-      reinterpret_cast<T*>(allocateBytes(sizeof(T) * capacity, alignof(T), false)),
+      reinterpret_cast<T*>(allocateBytes(sizeof(T) * capacity, ALIGN_OF(T), false)),
       capacity, DestructorOnlyArrayDisposer::instance);
 }
+#undef ALIGN_OF
 
 }  // namespace kj
 

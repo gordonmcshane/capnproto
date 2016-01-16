@@ -38,7 +38,7 @@ Thread::Thread(Function<void()> func): func(kj::mv(func)) {
   KJ_ASSERT(threadHandle != nullptr, "CreateThread failed.");
 }
 
-Thread::~Thread() noexcept(false) {
+Thread::~Thread() KJ_NOEXCEPT_IF(false) {
   if (!detached) {
     KJ_ASSERT(WaitForSingleObject(threadHandle, INFINITE) != WAIT_FAILED);
 
@@ -76,7 +76,7 @@ Thread::Thread(Function<void()> func): func(kj::mv(func)) {
   }
 }
 
-Thread::~Thread() noexcept(false) {
+Thread::~Thread() KJ_NOEXCEPT_IF(false) {
   if (!detached) {
     int pthreadResult = pthread_join(*reinterpret_cast<pthread_t*>(&threadId), nullptr);
     if (pthreadResult != 0) {

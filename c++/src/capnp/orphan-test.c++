@@ -22,6 +22,7 @@
 #include "message.h"
 #include <kj/debug.h>
 #include <kj/compat/gtest.h>
+#include <kj/common.h>
 #include "test-util.h"
 
 namespace capnp {
@@ -921,7 +922,13 @@ TEST(Orphans, ReferenceExternalData) {
   MallocMessageBuilder builder;
 
   union {
+#if KJ_VS12
+    struct {
+#endif
     word align;
+#if KJ_VS12
+    };
+#endif
     byte data[50];
   };
 
@@ -989,7 +996,13 @@ TEST(Orphans, ReferenceExternalData_NoZeroOnSet) {
   // Verify that an external blob is not zeroed by setFoo().
 
   union {
+#if KJ_VS12
+    struct {
+#endif
     word align;
+#if KJ_VS12
+    };
+#endif
     byte data[50];
   };
 
@@ -1012,7 +1025,13 @@ TEST(Orphans, ReferenceExternalData_NoZeroImmediateAbandon) {
   // adopted.
 
   union {
+#if KJ_VS12
+    struct {
+#endif
     word align;
+#if KJ_VS12
+    };
+#endif
     byte data[50];
   };
 

@@ -109,10 +109,10 @@ public:
   void runOnce(Initializer& init);
 
 #if _WIN32  // TODO(perf): Can we make this inline on win32 somehow?
-  bool isInitialized() noexcept;
+  bool isInitialized() KJ_NOEXCEPT;
 
 #else
-  inline bool isInitialized() noexcept {
+  inline bool isInitialized() KJ_NOEXCEPT {
     // Fast path check to see if runOnce() would simply return immediately.
 #if KJ_USE_FUTEX
     return __atomic_load_n(&futex, __ATOMIC_ACQUIRE) == INITIALIZED;

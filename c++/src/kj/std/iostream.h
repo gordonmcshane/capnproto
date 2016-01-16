@@ -40,7 +40,7 @@ class StdOutputStream: public kj::OutputStream {
 
 public:
   explicit StdOutputStream(::std::ostream& stream) : stream_(stream) {}
-  ~StdOutputStream() noexcept(false) {}
+  ~StdOutputStream() KJ_NOEXCEPT_IF(false) {}
 
   virtual void write(const void* src, size_t size) override {
     // Always writes the full size.
@@ -67,7 +67,7 @@ class StdInputStream: public kj::InputStream {
 
 public:
   explicit StdInputStream(::std::istream& stream) : stream_(stream) {}
-  ~StdInputStream() noexcept(false) {}
+  ~StdInputStream() KJ_NOEXCEPT_IF(false) {}
 
   virtual size_t tryRead(
       void* buffer, size_t minBytes, size_t maxBytes) override {

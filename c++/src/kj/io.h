@@ -38,7 +38,7 @@ namespace kj {
 
 class InputStream {
 public:
-  virtual ~InputStream() noexcept(false);
+  virtual ~InputStream() KJ_NOEXCEPT_IF(false);
 
   size_t read(void* buffer, size_t minBytes, size_t maxBytes);
   // Reads at least minBytes and at most maxBytes, copying them into the given buffer.  Returns
@@ -70,7 +70,7 @@ public:
 
 class OutputStream {
 public:
-  virtual ~OutputStream() noexcept(false);
+  virtual ~OutputStream() KJ_NOEXCEPT_IF(false);
 
   virtual void write(const void* buffer, size_t size) = 0;
   // Always writes the full size.  Throws exception on error.
@@ -88,7 +88,7 @@ class BufferedInputStream: public InputStream {
   // caller a direct pointer to that memory to potentially avoid a copy.
 
 public:
-  virtual ~BufferedInputStream() noexcept(false);
+  virtual ~BufferedInputStream() KJ_NOEXCEPT_IF(false);
 
   ArrayPtr<const byte> getReadBuffer();
   // Get a direct pointer into the read buffer, which contains the next bytes in the input.  If the
@@ -106,7 +106,7 @@ class BufferedOutputStream: public OutputStream {
   // caller a direct pointer to that memory to potentially avoid a copy.
 
 public:
-  virtual ~BufferedOutputStream() noexcept(false);
+  virtual ~BufferedOutputStream() KJ_NOEXCEPT_IF(false);
 
   virtual ArrayPtr<byte> getWriteBuffer() = 0;
   // Get a direct pointer into the write buffer.  The caller may choose to fill in some prefix of
@@ -136,7 +136,7 @@ public:
   // its own.  This may improve performance if the buffer can be reused.
 
   KJ_DISALLOW_COPY(BufferedInputStreamWrapper);
-  ~BufferedInputStreamWrapper() noexcept(false);
+  ~BufferedInputStreamWrapper() KJ_NOEXCEPT_IF(false);
 
   // implements BufferedInputStream ----------------------------------
   ArrayPtr<const byte> tryGetReadBuffer() override;
@@ -162,7 +162,7 @@ public:
   // its own.  This may improve performance if the buffer can be reused.
 
   KJ_DISALLOW_COPY(BufferedOutputStreamWrapper);
-  ~BufferedOutputStreamWrapper() noexcept(false);
+  ~BufferedOutputStreamWrapper() KJ_NOEXCEPT_IF(false);
 
   void flush();
   // Force the wrapper to write any remaining bytes in its buffer to the inner stream.  Note that
@@ -188,7 +188,7 @@ class ArrayInputStream: public BufferedInputStream {
 public:
   explicit ArrayInputStream(ArrayPtr<const byte> array);
   KJ_DISALLOW_COPY(ArrayInputStream);
-  ~ArrayInputStream() noexcept(false);
+  ~ArrayInputStream() KJ_NOEXCEPT_IF(false);
 
   // implements BufferedInputStream ----------------------------------
   ArrayPtr<const byte> tryGetReadBuffer() override;
@@ -203,7 +203,7 @@ class ArrayOutputStream: public BufferedOutputStream {
 public:
   explicit ArrayOutputStream(ArrayPtr<byte> array);
   KJ_DISALLOW_COPY(ArrayOutputStream);
-  ~ArrayOutputStream() noexcept(false);
+  ~ArrayOutputStream() KJ_NOEXCEPT_IF(false);
 
   ArrayPtr<byte> getArray() {
     // Get the portion of the array which has been filled in.
@@ -235,9 +235,9 @@ public:
   inline AutoCloseFd(): fd(-1) {}
   inline AutoCloseFd(decltype(nullptr)): fd(-1) {}
   inline explicit AutoCloseFd(int fd): fd(fd) {}
-  inline AutoCloseFd(AutoCloseFd&& other) noexcept: fd(other.fd) { other.fd = -1; }
+  inline AutoCloseFd(AutoCloseFd&& other) KJ_NOEXCEPT: fd(other.fd) { other.fd = -1; }
   KJ_DISALLOW_COPY(AutoCloseFd);
-  ~AutoCloseFd() noexcept(false);
+  ~AutoCloseFd() KJ_NOEXCEPT_IF(false);
 
   inline AutoCloseFd& operator=(AutoCloseFd&& other) {
     AutoCloseFd old(kj::mv(*this));
@@ -278,7 +278,7 @@ public:
   explicit FdInputStream(int fd): fd(fd) {}
   explicit FdInputStream(AutoCloseFd fd): fd(fd), autoclose(mv(fd)) {}
   KJ_DISALLOW_COPY(FdInputStream);
-  ~FdInputStream() noexcept(false);
+  ~FdInputStream() KJ_NOEXCEPT_IF(false);
 
   size_t tryRead(void* buffer, size_t minBytes, size_t maxBytes) override;
 
@@ -294,7 +294,7 @@ public:
   explicit FdOutputStream(int fd): fd(fd) {}
   explicit FdOutputStream(AutoCloseFd fd): fd(fd), autoclose(mv(fd)) {}
   KJ_DISALLOW_COPY(FdOutputStream);
-  ~FdOutputStream() noexcept(false);
+  ~FdOutputStream() KJ_NOEXCEPT_IF(false);
 
   void write(const void* buffer, size_t size) override;
   void write(ArrayPtr<const ArrayPtr<const byte>> pieces) override;

@@ -284,7 +284,7 @@ void Once::runOnce(Initializer& init) {
   }
 }
 
-bool Once::isInitialized() noexcept {
+bool Once::isInitialized() KJ_NOEXCEPT {
   BOOL junk;
   return InitOnceBeginInitialize(&coercedInitOnce, INIT_ONCE_CHECK_ONLY, &junk, nullptr);
 }

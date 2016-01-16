@@ -59,11 +59,11 @@ struct Void {
   // Type used for Void fields.  Using C++'s "void" type creates a bunch of issues since it behaves
   // differently from other types.
 
-  inline constexpr bool operator==(Void other) const { return true; }
-  inline constexpr bool operator!=(Void other) const { return false; }
+  inline KJ_CONSTEXPR_VS14() bool operator==(Void other) const { return true; }
+  inline KJ_CONSTEXPR_VS14() bool operator!=(Void other) const { return false; }
 };
 
-static constexpr Void VOID = Void();
+static KJ_CONSTEXPR_VS14() Void VOID = Void();
 // Constant value for `Void`,  which is an empty struct.
 
 inline kj::StringPtr KJ_STRINGIFY(Void) { return "void"; }
@@ -140,24 +140,24 @@ struct MsvcWorkaround {
 
 template <typename T, size_t s = MsvcWorkaround<T>::value> struct Kind_;
 
-template <> struct Kind_<Void> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<bool> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<int8_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<int16_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<int32_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<int64_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<uint8_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<uint16_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<uint32_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<uint64_t> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<float> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<double> { static constexpr Kind kind = Kind::PRIMITIVE; };
-template <> struct Kind_<Text> { static constexpr Kind kind = Kind::BLOB; };
-template <> struct Kind_<Data> { static constexpr Kind kind = Kind::BLOB; };
+template <> struct Kind_<Void> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<bool> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<int8_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<int16_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<int32_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<int64_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<uint8_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<uint16_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<uint32_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<uint64_t> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<float> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<double> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::PRIMITIVE; };
+template <> struct Kind_<Text> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::BLOB; };
+template <> struct Kind_<Data> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::BLOB; };
 
-template <typename T> struct Kind_<T, sizeof(uint8_t)> { static constexpr Kind kind = Kind::STRUCT; };
-template <typename T> struct Kind_<T, sizeof(uint16_t)> { static constexpr Kind kind = Kind::INTERFACE; };
-template <typename T> struct Kind_<T, sizeof(uint32_t)> { static constexpr Kind kind = Kind::ENUM; };
+template <typename T> struct Kind_<T, sizeof(uint8_t)> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::STRUCT; };
+template <typename T> struct Kind_<T, sizeof(uint16_t)> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::INTERFACE; };
+template <typename T> struct Kind_<T, sizeof(uint32_t)> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::ENUM; };
 
 }  // namespace _ (private)
 
@@ -207,7 +207,7 @@ template <typename T> using ListElementType = typename ListElementType_<T>::Type
 
 namespace _ {  // private
 template <typename T, Kind k> struct Kind_<List<T, k>, sizeof(uint64_t)> {
-  static constexpr Kind kind = Kind::LIST;
+  static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::LIST;
 };
 }  // namespace _ (private)
 
@@ -235,6 +235,30 @@ template <typename T> struct TypeIfEnum_<T, Kind::ENUM> { typedef T Type; };
 template <typename T>
 using TypeIfEnum = typename TypeIfEnum_<kj::Decay<T>>::Type;
 
+#if KJ_VS12
+
+template <typename T>
+using FromReader = typename kj::Decay_<T>::Type::Reads;
+// FromReader<MyType::Reader> = MyType (for any Cap'n Proto type).
+
+template <typename T>
+using FromBuilder = typename kj::Decay_<T>::Type::Builds;
+// FromBuilder<MyType::Builder> = MyType (for any Cap'n Proto type).
+
+template <typename T>
+using FromPipeline = typename kj::Decay_<T>::Type::Pipelines;
+// FromBuilder<MyType::Pipeline> = MyType (for any Cap'n Proto type).
+
+template <typename T>
+using FromClient = typename kj::Decay_<T>::Type::Calls;
+// FromReader<MyType::Client> = MyType (for any Cap'n Proto interface type).
+
+template <typename T>
+using FromServer = typename kj::Decay_<T>::Type::Server;
+// FromBuilder<MyType::Server> = MyType (for any Cap'n Proto interface type).
+
+#else
+
 template <typename T>
 using FromReader = typename kj::Decay<T>::Reads;
 // FromReader<MyType::Reader> = MyType (for any Cap'n Proto type).
@@ -252,8 +276,10 @@ using FromClient = typename kj::Decay<T>::Calls;
 // FromReader<MyType::Client> = MyType (for any Cap'n Proto interface type).
 
 template <typename T>
-using FromServer = typename kj::Decay<T>::Serves;
+using FromServer = typename kj::Decay<T>::Server;
 // FromBuilder<MyType::Server> = MyType (for any Cap'n Proto interface type).
+
+#endif
 
 struct FromAny_ {
   template <typename T, typename X = FromReader<T>> static X apply(T*, int);
@@ -364,36 +390,36 @@ typedef kj::Quantity<uint32_t, _::WirePointer> WirePointerCount32;
 typedef kj::Quantity<uint64_t, _::WirePointer> WirePointerCount64;
 
 template <typename T, typename U>
-inline constexpr U* operator+(U* ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() U* operator+(U* ptr, kj::Quantity<T, U> offset) {
   return ptr + offset / kj::unit<kj::Quantity<T, U>>();
 }
 template <typename T, typename U>
-inline constexpr const U* operator+(const U* ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() const U* operator+(const U* ptr, kj::Quantity<T, U> offset) {
   return ptr + offset / kj::unit<kj::Quantity<T, U>>();
 }
 template <typename T, typename U>
-inline constexpr U* operator+=(U*& ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() U* operator+=(U*& ptr, kj::Quantity<T, U> offset) {
   return ptr = ptr + offset / kj::unit<kj::Quantity<T, U>>();
 }
 template <typename T, typename U>
-inline constexpr const U* operator+=(const U*& ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() const U* operator+=(const U*& ptr, kj::Quantity<T, U> offset) {
   return ptr = ptr + offset / kj::unit<kj::Quantity<T, U>>();
 }
 
 template <typename T, typename U>
-inline constexpr U* operator-(U* ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() U* operator-(U* ptr, kj::Quantity<T, U> offset) {
   return ptr - offset / kj::unit<kj::Quantity<T, U>>();
 }
 template <typename T, typename U>
-inline constexpr const U* operator-(const U* ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() const U* operator-(const U* ptr, kj::Quantity<T, U> offset) {
   return ptr - offset / kj::unit<kj::Quantity<T, U>>();
 }
 template <typename T, typename U>
-inline constexpr U* operator-=(U*& ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() U* operator-=(U*& ptr, kj::Quantity<T, U> offset) {
   return ptr = ptr - offset / kj::unit<kj::Quantity<T, U>>();
 }
 template <typename T, typename U>
-inline constexpr const U* operator-=(const U*& ptr, kj::Quantity<T, U> offset) {
+inline KJ_CONSTEXPR_VS14() const U* operator-=(const U*& ptr, kj::Quantity<T, U> offset) {
   return ptr = ptr - offset / kj::unit<kj::Quantity<T, U>>();
 }
 
@@ -431,37 +457,37 @@ typedef uint64_t WirePointerCount64;
 
 #endif
 
-constexpr BitCount BITS = kj::unit<BitCount>();
-constexpr ByteCount BYTES = kj::unit<ByteCount>();
-constexpr WordCount WORDS = kj::unit<WordCount>();
-constexpr ElementCount ELEMENTS = kj::unit<ElementCount>();
-constexpr WirePointerCount POINTERS = kj::unit<WirePointerCount>();
+KJ_CONSTEXPR_VS14(static const) BitCount BITS = kj::unit<BitCount>();
+KJ_CONSTEXPR_VS14(static const) ByteCount BYTES = kj::unit<ByteCount>();
+KJ_CONSTEXPR_VS14(static const) WordCount WORDS = kj::unit<WordCount>();
+KJ_CONSTEXPR_VS14(static const) ElementCount ELEMENTS = kj::unit<ElementCount>();
+KJ_CONSTEXPR_VS14(static const) WirePointerCount POINTERS = kj::unit<WirePointerCount>();
 
 // GCC 4.7 actually gives unused warnings on these constants in opt mode...
-constexpr auto BITS_PER_BYTE KJ_UNUSED = 8 * BITS / BYTES;
-constexpr auto BITS_PER_WORD KJ_UNUSED = 64 * BITS / WORDS;
-constexpr auto BYTES_PER_WORD KJ_UNUSED = 8 * BYTES / WORDS;
+KJ_CONSTEXPR_VS14(const) auto BITS_PER_BYTE KJ_UNUSED = 8 * BITS / BYTES;
+KJ_CONSTEXPR_VS14(const) auto BITS_PER_WORD KJ_UNUSED = 64 * BITS / WORDS;
+KJ_CONSTEXPR_VS14(const) auto BYTES_PER_WORD KJ_UNUSED = 8 * BYTES / WORDS;
 
-constexpr auto BITS_PER_POINTER KJ_UNUSED = 64 * BITS / POINTERS;
-constexpr auto BYTES_PER_POINTER KJ_UNUSED = 8 * BYTES / POINTERS;
-constexpr auto WORDS_PER_POINTER KJ_UNUSED = 1 * WORDS / POINTERS;
+KJ_CONSTEXPR_VS14(const) auto BITS_PER_POINTER KJ_UNUSED = 64 * BITS / POINTERS;
+KJ_CONSTEXPR_VS14(const) auto BYTES_PER_POINTER KJ_UNUSED = 8 * BYTES / POINTERS;
+KJ_CONSTEXPR_VS14(const) auto WORDS_PER_POINTER KJ_UNUSED = 1 * WORDS / POINTERS;
 
-constexpr WordCount POINTER_SIZE_IN_WORDS = 1 * POINTERS * WORDS_PER_POINTER;
+KJ_CONSTEXPR_VS14(const) WordCount POINTER_SIZE_IN_WORDS = 1 * POINTERS * WORDS_PER_POINTER;
 
 template <typename T>
-inline KJ_CONSTEXPR() decltype(BYTES / ELEMENTS) bytesPerElement() {
+inline KJ_CONSTEXPR_VS14() decltype(BYTES / ELEMENTS) bytesPerElement() {
   return sizeof(T) * BYTES / ELEMENTS;
 }
 
 template <typename T>
-inline KJ_CONSTEXPR() decltype(BITS / ELEMENTS) bitsPerElement() {
+inline KJ_CONSTEXPR_VS14() decltype(BITS / ELEMENTS) bitsPerElement() {
   return sizeof(T) * 8 * BITS / ELEMENTS;
 }
 
-inline constexpr ByteCount intervalLength(const byte* a, const byte* b) {
+inline KJ_CONSTEXPR_VS14() ByteCount intervalLength(const byte* a, const byte* b) {
   return uint(b - a) * BYTES;
 }
-inline constexpr WordCount intervalLength(const word* a, const word* b) {
+inline KJ_CONSTEXPR_VS14() WordCount intervalLength(const word* a, const word* b) {
   return uint(b - a) * WORDS;
 }
 

@@ -66,9 +66,9 @@ struct List<AnyStruct, Kind::OTHER> {
 };
 
 namespace _ {  // private
-template <> struct Kind_<AnyPointer> { static constexpr Kind kind = Kind::OTHER; };
-template <> struct Kind_<AnyStruct> { static constexpr Kind kind = Kind::OTHER; };
-template <> struct Kind_<AnyList> { static constexpr Kind kind = Kind::OTHER; };
+template <> struct Kind_<AnyPointer> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::OTHER; };
+template <> struct Kind_<AnyStruct> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::OTHER; };
+template <> struct Kind_<AnyList> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::OTHER; };
 }  // namespace _ (private)
 
 // =======================================================================================
@@ -304,11 +304,28 @@ class Orphan<AnyPointer> {
 public:
   Orphan() = default;
   KJ_DISALLOW_COPY(Orphan);
+
+#if KJ_VS12
+  
+  Orphan(Orphan&& other)
+    : builder(kj::mv(builder))
+  {}
+
+  Orphan& operator=(Orphan&& rhs)
+  {
+    builder = kj::mv(builder);
+    return *this;
+  }
+
+#else
+
   Orphan(Orphan&&) = default;
+  Orphan& operator=(Orphan&&) = default;
+
+#endif
+
   inline Orphan(_::OrphanBuilder&& builder)
       : builder(kj::mv(builder)) {}
-
-  Orphan& operator=(Orphan&&) = default;
 
   template <typename T>
   inline Orphan(Orphan<T>&& other): builder(kj::mv(other.builder)) {}

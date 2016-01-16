@@ -23,6 +23,7 @@
 #include <kj/compat/gtest.h>
 #include <string>
 #include "vector.h"
+#include <stdint.h>
 
 namespace kj {
 namespace _ {  // private

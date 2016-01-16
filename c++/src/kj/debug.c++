@@ -272,7 +272,7 @@ void Debug::logInternal(const char* file, int line, LogSeverity severity, const 
       makeDescriptionImpl(LOG, nullptr, 0, macroArgs, argValues));
 }
 
-Debug::Fault::~Fault() noexcept(false) {
+Debug::Fault::~Fault() KJ_NOEXCEPT_IF(false) {
   if (exception != nullptr) {
     Exception copy = mv(*exception);
     delete exception;
@@ -317,7 +317,7 @@ int Debug::getOsErrorNumber(bool nonblocking) {
 }
 
 Debug::Context::Context(): logged(false) {}
-Debug::Context::~Context() noexcept(false) {}
+Debug::Context::~Context() KJ_NOEXCEPT_IF(false) {}
 
 Debug::Context::Value Debug::Context::ensureInitialized() {
   KJ_IF_MAYBE(v, value) {

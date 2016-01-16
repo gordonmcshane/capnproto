@@ -31,10 +31,10 @@
 
 namespace kj {
 
-InputStream::~InputStream() noexcept(false) {}
-OutputStream::~OutputStream() noexcept(false) {}
-BufferedInputStream::~BufferedInputStream() noexcept(false) {}
-BufferedOutputStream::~BufferedOutputStream() noexcept(false) {}
+InputStream::~InputStream() KJ_NOEXCEPT_IF(false) {}
+OutputStream::~OutputStream() KJ_NOEXCEPT_IF(false) {}
+BufferedInputStream::~BufferedInputStream() KJ_NOEXCEPT_IF(false) {}
+BufferedOutputStream::~BufferedOutputStream() KJ_NOEXCEPT_IF(false) {}
 
 size_t InputStream::read(void* buffer, size_t minBytes, size_t maxBytes) {
   size_t n = tryRead(buffer, minBytes, maxBytes);
@@ -73,7 +73,7 @@ BufferedInputStreamWrapper::BufferedInputStreamWrapper(InputStream& inner, Array
     : inner(inner), ownedBuffer(buffer == nullptr ? heapArray<byte>(8192) : nullptr),
       buffer(buffer == nullptr ? ownedBuffer : buffer) {}
 
-BufferedInputStreamWrapper::~BufferedInputStreamWrapper() noexcept(false) {}
+BufferedInputStreamWrapper::~BufferedInputStreamWrapper() KJ_NOEXCEPT_IF(false) {}
 
 ArrayPtr<const byte> BufferedInputStreamWrapper::tryGetReadBuffer() {
   if (bufferAvailable.size() == 0) {
@@ -140,7 +140,7 @@ BufferedOutputStreamWrapper::BufferedOutputStreamWrapper(OutputStream& inner, Ar
       buffer(buffer == nullptr ? ownedBuffer : buffer),
       bufferPos(this->buffer.begin()) {}
 
-BufferedOutputStreamWrapper::~BufferedOutputStreamWrapper() noexcept(false) {
+BufferedOutputStreamWrapper::~BufferedOutputStreamWrapper() KJ_NOEXCEPT_IF(false) {
   unwindDetector.catchExceptionsIfUnwinding([&]() {
     flush();
   });
@@ -189,7 +189,7 @@ void BufferedOutputStreamWrapper::write(const void* src, size_t size) {
 // =======================================================================================
 
 ArrayInputStream::ArrayInputStream(ArrayPtr<const byte> array): array(array) {}
-ArrayInputStream::~ArrayInputStream() noexcept(false) {}
+ArrayInputStream::~ArrayInputStream() KJ_NOEXCEPT_IF(false) {}
 
 ArrayPtr<const byte> ArrayInputStream::tryGetReadBuffer() {
   return array;
@@ -213,7 +213,7 @@ void ArrayInputStream::skip(size_t bytes) {
 // -------------------------------------------------------------------
 
 ArrayOutputStream::ArrayOutputStream(ArrayPtr<byte> array): array(array), fillPos(array.begin()) {}
-ArrayOutputStream::~ArrayOutputStream() noexcept(false) {}
+ArrayOutputStream::~ArrayOutputStream() KJ_NOEXCEPT_IF(false) {}
 
 ArrayPtr<byte> ArrayOutputStream::getWriteBuffer() {
   return arrayPtr(fillPos, array.end());
@@ -233,7 +233,7 @@ void ArrayOutputStream::write(const void* src, size_t size) {
 
 // =======================================================================================
 
-AutoCloseFd::~AutoCloseFd() noexcept(false) {
+AutoCloseFd::~AutoCloseFd() KJ_NOEXCEPT_IF(false) {
   if (fd >= 0) {
     unwindDetector.catchExceptionsIfUnwinding([&]() {
       // Don't use SYSCALL() here because close() should not be repeated on EINTR.
@@ -246,7 +246,7 @@ AutoCloseFd::~AutoCloseFd() noexcept(false) {
   }
 }
 
-FdInputStream::~FdInputStream() noexcept(false) {}
+FdInputStream::~FdInputStream() KJ_NOEXCEPT_IF(false) {}
 
 size_t FdInputStream::tryRead(void* buffer, size_t minBytes, size_t maxBytes) {
   byte* pos = reinterpret_cast<byte*>(buffer);
@@ -265,7 +265,7 @@ size_t FdInputStream::tryRead(void* buffer, size_t minBytes, size_t maxBytes) {
   return pos - reinterpret_cast<byte*>(buffer);
 }
 
-FdOutputStream::~FdOutputStream() noexcept(false) {}
+FdOutputStream::~FdOutputStream() KJ_NOEXCEPT_IF(false) {}
 
 void FdOutputStream::write(const void* buffer, size_t size) {
   const char* pos = reinterpret_cast<const char*>(buffer);

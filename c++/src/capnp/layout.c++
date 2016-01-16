@@ -248,8 +248,13 @@ struct WirePointer {
     StructRef structRef;
 
     ListRef listRef;
-
-    FarRef farRef;
+    #if KJ_VS12
+	  struct {
+    #endif
+      FarRef farRef;
+    #if KJ_VS12
+	  };
+    #endif
 
     CapRef capRef;
   };
@@ -263,18 +268,33 @@ struct WirePointer {
 };
 static_assert(sizeof(WirePointer) == sizeof(word),
     "capnp::WirePointer is not exactly one word.  This will probably break everything.");
+
+	#if !KJ_VS12
 static_assert(POINTERS * WORDS_PER_POINTER * BYTES_PER_WORD / BYTES == sizeof(WirePointer),
     "WORDS_PER_POINTER is wrong.");
 static_assert(POINTERS * BYTES_PER_POINTER / BYTES == sizeof(WirePointer),
     "BYTES_PER_POINTER is wrong.");
 static_assert(POINTERS * BITS_PER_POINTER / BITS_PER_BYTE / BYTES == sizeof(WirePointer),
     "BITS_PER_POINTER is wrong.");
-
+	#endif
 namespace {
 
+
 static const union {
+#if KJ_VS12
+#define KJ_MSVC_POINTERS_PER_WORD 1
+  struct {
+    AlignedData<KJ_MSVC_POINTERS_PER_WORD> word;
+  };
+  struct {
+    WirePointer pointer;
+  };
+  #undef KJ_MSVC_POINTERS_PER_WORD
+#else
   AlignedData<POINTER_SIZE_IN_WORDS / WORDS> word;
   WirePointer pointer;
+#endif
+  
 } zero = {{{0}}};
 
 }  // namespace

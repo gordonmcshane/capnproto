@@ -52,8 +52,22 @@ class Orphan {
 public:
   Orphan() = default;
   KJ_DISALLOW_COPY(Orphan);
-  Orphan(Orphan&&) = default;
-  Orphan& operator=(Orphan&&) = default;
+
+#if KJ_VS12
+  Orphan(Orphan&& other)
+    : builder(kj::mv(other.builder))
+  {}
+
+  Orphan& operator=(Orphan&& rhs)
+  {
+    builder = kj::mv(rhs.builder);
+    return *this;
+  }
+#else
+  Orphan(Orphan&& other) = default;
+  Orphan& operator=(Orphan&& rhs) = default;
+#endif
+
   inline Orphan(_::OrphanBuilder&& builder): builder(kj::mv(builder)) {}
 
   inline BuilderFor<T> get();

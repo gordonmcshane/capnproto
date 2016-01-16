@@ -137,6 +137,24 @@ inline bool operator!=(const char* a, const StringPtr& b) { return b != a; }
 class String {
 public:
   String() = default;
+
+#if KJ_VS12
+  
+  String(const String&) = delete;
+  String& operator=(String& rhs) = delete;
+
+  String(String&& other)
+    : content(kj::mv(other.content))
+  {}
+
+  String& operator=(String&& rhs)
+  {
+    content = kj::mv(rhs.content);
+    return *this;
+  }
+
+#endif
+
   inline String(decltype(nullptr)): content(nullptr) {}
   inline String(char* value, size_t size, const ArrayDisposer& disposer);
   // Does not copy.  `size` does not include NUL terminator, but `value` must be NUL-terminated.
@@ -313,7 +331,7 @@ struct Stringifier {
   inline Result operator*(T&& value) const { return kj::fwd<T>(value).toString(); }
 #endif
 };
-static KJ_CONSTEXPR(const) Stringifier STR = Stringifier();
+static KJ_CONSTEXPR_VS14(const) Stringifier STR = Stringifier();
 
 }  // namespace _ (private)
 

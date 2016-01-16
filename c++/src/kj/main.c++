@@ -25,7 +25,7 @@
 #include <map>
 #include <set>
 #include <stdlib.h>
-#ifndef _MSC_VER
+#ifndef _WIN32
 #include <unistd.h>
 #else
 #include <kj/miniposix.h>
@@ -286,6 +286,24 @@ struct MainBuilder::Impl {
   struct SubCommand {
     Function<MainFunc()> func;
     StringPtr helpText;
+
+#if KJ_VS12
+    SubCommand() = default;
+    SubCommand(Function<MainFunc()> func, StringPtr helpText)
+      : func(kj::mv(func)), helpText(helpText) {}
+
+    SubCommand(SubCommand&& other)
+      : func(mv(other.func)), helpText(mv(other.helpText))
+    {}
+
+    SubCommand& operator=(SubCommand&& rhs)
+    {
+      func = mv(rhs.func);
+      helpText = mv(rhs.helpText);
+      return *this;
+    }
+#endif
+
   };
   std::map<StringPtr, SubCommand> subCommands;
 
@@ -294,6 +312,25 @@ struct MainBuilder::Impl {
     Function<Validity(StringPtr)> callback;
     uint minCount;
     uint maxCount;
+
+#if KJ_VS12
+    Arg() = default;
+    Arg(StringPtr title, Function<Validity(StringPtr)> callback, uint minCount, uint maxCount)
+      : title(title), callback(kj::mv(callback)), minCount(minCount), maxCount(maxCount) {}
+    Arg(Arg&& other)
+      : title(mv(other.title)), callback(mv(other.callback)), minCount(minCount), maxCount(maxCount)
+    {}
+
+    Arg& operator=(Arg&& rhs)
+    {
+      title = mv(rhs.title);
+      callback = mv(rhs.callback);
+      minCount = minCount;
+      maxCount = maxCount;
+      return *this;
+    }
+
+#endif
   };
 
   Vector<Arg> args;
@@ -343,7 +380,7 @@ MainBuilder::MainBuilder(ProcessContext& context, StringPtr version,
             "Print version information and exit.");
 }
 
-MainBuilder::~MainBuilder() noexcept(false) {}
+MainBuilder::~MainBuilder() KJ_NOEXCEPT_IF(false) {}
 
 MainBuilder& MainBuilder::addOption(std::initializer_list<OptionName> names,
                                     Function<Validity()> callback,
@@ -407,6 +444,12 @@ MainBuilder& MainBuilder::callAfterParsing(Function<Validity()> callback) {
 class MainBuilder::MainImpl {
 public:
   MainImpl(Own<Impl>&& impl): impl(kj::mv(impl)) {}
+
+#if KJ_VS12
+  MainImpl(MainImpl&& other)
+    : impl(kj::mv(other.impl))
+  {}
+#endif
 
   void operator()(StringPtr programName, ArrayPtr<const StringPtr> params);
 
@@ -721,7 +764,11 @@ void MainBuilder::MainImpl::printHelp(StringPtr programName) {
     text.addAll(StringPtr("\nCommands:\n"));
     size_t maxLen = 0;
     for (auto& command: impl->subCommands) {
+#if defined(_MSC_VER)
+      maxLen = kj::max<size_t, size_t>(std::move(maxLen), command.first.size());
+#else
       maxLen = kj::max(maxLen, command.first.size());
+#endif
     }
     for (auto& command: impl->subCommands) {
       text.addAll(StringPtr("  "));

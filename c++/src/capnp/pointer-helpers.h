@@ -132,7 +132,7 @@ struct UncheckedMessage {
   typedef const word* Reader;
 };
 
-template <> struct Kind_<UncheckedMessage> { static constexpr Kind kind = Kind::OTHER; };
+template <> struct Kind_<UncheckedMessage> { static KJ_CONSTEXPR_VS14(const) Kind kind = Kind::OTHER; };
 
 template <>
 struct PointerHelpers<UncheckedMessage> {

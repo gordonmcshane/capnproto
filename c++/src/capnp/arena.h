@@ -197,7 +197,7 @@ private:
 
 class Arena {
 public:
-  virtual ~Arena() noexcept(false);
+  virtual ~Arena() KJ_NOEXCEPT_IF(false);
 
   virtual SegmentReader* tryGetSegment(SegmentId id) = 0;
   // Gets the segment with the given ID, or return nullptr if no such segment exists.
@@ -211,7 +211,7 @@ public:
 class ReaderArena final: public Arena {
 public:
   ReaderArena(MessageReader* message);
-  ~ReaderArena() noexcept(false);
+  ~ReaderArena() KJ_NOEXCEPT_IF(false);
   KJ_DISALLOW_COPY(ReaderArena);
 
   // implements Arena ------------------------------------------------
@@ -242,7 +242,7 @@ class BuilderArena final: public Arena {
 public:
   explicit BuilderArena(MessageBuilder* message);
   BuilderArena(MessageBuilder* message, kj::ArrayPtr<MessageBuilder::SegmentInit> segments);
-  ~BuilderArena() noexcept(false);
+  ~BuilderArena() KJ_NOEXCEPT_IF(false);
   KJ_DISALLOW_COPY(BuilderArena);
 
   inline SegmentBuilder* getRootSegment() { return &segment0; }
@@ -323,7 +323,24 @@ private:
   struct MultiSegmentState {
     kj::Vector<kj::Own<SegmentBuilder>> builders;
     kj::Vector<kj::ArrayPtr<const word>> forOutput;
+
+    #if KJ_VS12
+
+    MultiSegmentState() = default;
+    MultiSegmentState(MultiSegmentState&& other)
+      : builders(mv(other.builders)), forOutput(mv(other.forOutput))
+    {}
+
+    MultiSegmentState& operator=(MultiSegmentState&& rhs)
+    {
+      builders = mv(rhs.builders);
+      forOutput = mv(rhs.forOutput);
+      return *this;
+    }
+
+    #endif
   };
+
   kj::Maybe<kj::Own<MultiSegmentState>> moreSegments;
 
   SegmentBuilder* segmentWithSpace = nullptr;

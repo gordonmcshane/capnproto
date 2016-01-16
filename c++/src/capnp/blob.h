@@ -81,6 +81,12 @@ public:
   inline Reader(const kj::String& value): StringPtr(value) {}
   inline Reader(const StringPtr& value): StringPtr(value) {}
 
+#if KJ_VS12
+  Reader(Reader&& other)
+    : StringPtr(mv(other))
+  {}
+#endif
+
 #if KJ_COMPILER_SUPPORTS_STL_STRING_INTEROP
   template <typename T, typename = decltype(kj::instance<T>().c_str())>
   inline Reader(const T& t): StringPtr(t) {}
