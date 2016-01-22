@@ -25,14 +25,23 @@
 #include <map>
 #include <set>
 #include <stdlib.h>
+#ifndef _MSC_VER
 #include <unistd.h>
+#else
+#include <kj/miniposix.h>
+#endif
 #include <errno.h>
 #include <limits.h>
-
 #if _WIN32
 #include <windows.h>
 #include <io.h>
 #include <fcntl.h>
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
 #else
 #include <sys/uio.h>
 #endif

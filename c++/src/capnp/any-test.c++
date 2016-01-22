@@ -226,6 +226,8 @@ TEST(Any, AnyList) {
 #endif
 }
 
+#if !CAPNP_LITE
+
 TEST(Any, AnyStructListCapInSchema) {
   MallocMessageBuilder builder;
   auto root = builder.getRoot<test::TestAnyOthers>();
@@ -261,7 +263,7 @@ TEST(Any, AnyStructListCapInSchema) {
   }
 }
 
-
+#endif
 
 TEST(Any, Equals) {
   MallocMessageBuilder builderA;

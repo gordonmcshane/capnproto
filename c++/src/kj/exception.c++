@@ -28,7 +28,9 @@
 #include <exception>
 #include <new>
 #include <signal.h>
+#ifndef _WIN32
 #include <sys/mman.h>
+#endif
 #include "io.h"
 
 #if (__linux__ && !__ANDROID__) || __APPLE__
@@ -216,7 +218,7 @@ void printStackTraceOnCrash() {
 kj::StringPtr trimSourceFilename(kj::StringPtr filename) {
   // Removes noisy prefixes from source code file name.
 
-  static constexpr const char* PREFIXES[] = {
+  static KJ_CONSTEXPR() const char* PREFIXES[] = {
     "../",
     "/ekam-provider/canonical/",
     "/ekam-provider/c++header/",

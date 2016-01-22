@@ -29,6 +29,9 @@
 #include <initializer_list>
 #include "array.h"
 #include <string.h>
+#ifdef _MSC_VER
+#include <string>
+#endif
 
 namespace kj {
 
@@ -269,6 +272,9 @@ struct Stringifier {
   inline ArrayPtr<const char> operator*(const FixedArray<char, n>& s) const { return s; }
   inline ArrayPtr<const char> operator*(const char* s) const { return arrayPtr(s, strlen(s)); }
   inline ArrayPtr<const char> operator*(const String& s) const { return s.asArray(); }
+#ifdef _MSC_VER
+  inline ArrayPtr<const char> operator*(const std::string& s) const { return arrayPtr(s.c_str(), s.length() + 1); }
+#endif
   inline ArrayPtr<const char> operator*(const StringPtr& s) const { return s.asArray(); }
 
   inline Range<char> operator*(const Range<char>& r) const { return r; }

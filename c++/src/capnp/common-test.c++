@@ -63,10 +63,10 @@ static_assert(_::Kind_<ExampleInterface>::kind == Kind::INTERFACE, "Kind SFINAE 
 
 // Test FromAnay<>
 template <typename T, typename U>
-struct EqualTypes_ { static constexpr bool value = false; };
+struct EqualTypes_ { static KJ_CONSTEXPR(const) bool value = false; };
 
 template <typename T>
-struct EqualTypes_<T, T> { static constexpr bool value = true; };
+struct EqualTypes_<T, T> { static KJ_CONSTEXPR(const) bool value = true; };
 
 template <typename T, typename U>
 inline constexpr bool equalTypes() { return EqualTypes_<T, U>::value; }
@@ -74,12 +74,15 @@ inline constexpr bool equalTypes() { return EqualTypes_<T, U>::value; }
 using capnproto_test::capnp::test::TestAllTypes;
 using capnproto_test::capnp::test::TestInterface;
 
+// These asserts cause an internal compiler error in Visual Studio 2015 Update 1
+#ifndef _MSC_VER
 static_assert(equalTypes<FromAny<int>, int>(), "");
 static_assert(equalTypes<FromAny<TestAllTypes::Reader>, TestAllTypes>(), "");
 static_assert(equalTypes<FromAny<TestAllTypes::Builder>, TestAllTypes>(), "");
 static_assert(equalTypes<FromAny<TestAllTypes::Pipeline>, TestAllTypes>(), "");
 static_assert(equalTypes<FromAny<TestInterface::Client>, TestInterface>(), "");
 static_assert(equalTypes<FromAny<kj::Own<TestInterface::Server>>, TestInterface>(), "");
+#endif
 
 }  // namespace
 }  // namespace capnp

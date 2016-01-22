@@ -32,8 +32,8 @@
 
 #include <kj/units.h>
 #include <inttypes.h>
-#include <kj/string.h>
 #include <kj/memory.h>
+#include <kj/string.h>
 
 namespace capnp {
 
@@ -63,7 +63,7 @@ struct Void {
   inline constexpr bool operator!=(Void other) const { return false; }
 };
 
-static KJ_CONSTEXPR(const) Void VOID = Void();
+static constexpr Void VOID = Void();
 // Constant value for `Void`,  which is an empty struct.
 
 inline kj::StringPtr KJ_STRINGIFY(Void) { return "void"; }
@@ -261,8 +261,10 @@ struct FromAny_ {
   template <typename T, typename X = FromPipeline<T>> static X apply(T*, long);
   // note that ::Client is covered by FromReader
   template <typename T, typename X = FromServer<T>> static X apply(kj::Own<T>*, short);
+#if !CAPNP_LITE
   template <typename T, typename = kj::EnableIf<style<T>() == Style::PRIMITIVE>>
       static T apply(T*, unsigned int);
+#endif
 };
 
 template <typename T>

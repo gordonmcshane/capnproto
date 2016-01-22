@@ -119,7 +119,7 @@ private:
   template <typename T>
   static void destroyArray(void* pointer) {
     size_t elementCount = *reinterpret_cast<size_t*>(pointer);
-    constexpr size_t prefixSize = kj::max(alignof(T), sizeof(size_t));
+    KJ_CONSTEXPR(const) size_t prefixSize = kj::max(alignof(T), sizeof(size_t));
     DestructorOnlyArrayDisposer::instance.disposeImpl(
         reinterpret_cast<byte*>(pointer) + prefixSize,
         sizeof(T), elementCount, elementCount, &destroyObject<T>);
@@ -161,7 +161,7 @@ ArrayPtr<T> Arena::allocateArray(size_t size) {
     return result;
   } else {
     // Allocate with a 64-bit prefix in which we store the array size.
-    constexpr size_t prefixSize = kj::max(alignof(T), sizeof(size_t));
+    KJ_CONSTEXPR(const) size_t prefixSize = kj::max(alignof(T), sizeof(size_t));
     void* base = allocateBytes(sizeof(T) * size + prefixSize, alignof(T), true);
     size_t& tag = *reinterpret_cast<size_t*>(base);
     ArrayPtr<T> result =

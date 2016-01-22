@@ -385,7 +385,11 @@ private:
 template <typename... Params>
 void Debug::log(const char* file, int line, LogSeverity severity, const char* macroArgs,
                 Params&&... params) {
-  String argValues[sizeof...(Params)] = {str(params)...};
+#if _MSC_VER
+  String argValues[sizeof...(Params)] = {str<Params>(kj::fwd<Params>(params))...};
+#else
+  String argValues[sizeof...(Params)] = { str(params)... };
+#endif
   logInternal(file, line, severity, macroArgs, arrayPtr(argValues, sizeof...(Params)));
 }
 
