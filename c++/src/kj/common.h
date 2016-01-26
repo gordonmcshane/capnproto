@@ -76,7 +76,6 @@
 
 #include <stddef.h>
 #include <initializer_list>
-#include <type_traits>
 
 #if __linux__ && __cplusplus > 201200L
 // Hack around stdlib bug with C++14 that exists on some Linux systems.
@@ -452,6 +451,15 @@ T refIfLvalue(T&&);
 //     KJ_DECLTYPE_REF(i) i3(i);                  // i3 has type int&.
 //     KJ_DECLTYPE_REF(kj::mv(i)) i4(kj::mv(i));  // i4 has type int.
 
+#if KJ_VS12
+
+  template <typename T, typename U>
+  struct CanConvert {
+    static const bool value = __is_convertible_to(T, U);
+  };
+
+#else
+
 template <typename T>
 struct CanConvert_ {
   static int sfinae(T);
@@ -462,6 +470,7 @@ template <typename T, typename U>
 KJ_CONSTEXPR_VS14(const) bool canConvert() {
   return sizeof(CanConvert_<U>::sfinae(instance<T>())) == sizeof(int);
 }
+#endif
 
 #if __clang__
 template <typename T>
@@ -534,20 +543,20 @@ inline KJ_CONSTEXPR_VS14() auto max(T&& a, U&& b) -> MaxType<Decay<T>, Decay<U>>
 }
 
 template <typename T, size_t s>
-inline KJ_CONSTEXPR_VS14(const) size_t size(T(&arr)[s]) { return s; }
+inline KJ_CONSTEXPR_VS14() size_t size(T(&arr)[s]) { return s; }
 template <typename T>
-inline KJ_CONSTEXPR_VS14(const) size_t size(T&& arr) { return arr.size(); }
+inline KJ_CONSTEXPR_VS14() size_t size(T&& arr) { return arr.size(); }
 // Returns the size of the parameter, whether the parameter is a regular C array or a container
 // with a `.size()` method.
 
 class MaxValue_ {
 private:
   template <typename T>
-  inline KJ_CONSTEXPR_VS14(const) T maxSigned() const {
+  inline KJ_CONSTEXPR_VS14() T maxSigned() const {
     return (1ull << (sizeof(T) * 8 - 1)) - 1;
   }
   template <typename T>
-  inline KJ_CONSTEXPR_VS14(const) T maxUnsigned() const {
+  inline KJ_CONSTEXPR_VS14() T maxUnsigned() const {
     return ~static_cast<T>(0u);
   }
 
@@ -573,11 +582,11 @@ public:
 class MinValue_ {
 private:
   template <typename T>
-  inline KJ_CONSTEXPR_VS14(const) T minSigned() const {
+  inline KJ_CONSTEXPR_VS14() T minSigned() const {
     return 1ull << (sizeof(T) * 8 - 1);
   }
   template <typename T>
-  inline KJ_CONSTEXPR_VS14(const) T minUnsigned() const {
+  inline KJ_CONSTEXPR_VS14() T minUnsigned() const {
     return 0u;
   }
 
@@ -615,15 +624,15 @@ static KJ_CONSTEXPR_VS14(const) MinValue_ minValue = MinValue_();
 // `char` is not supported, but `signed char` and `unsigned char` are.
 
 #if __GNUC__
-inline KJ_CONSTEXPR(const) float inf() { return __builtin_huge_valf(); }
-inline KJ_CONSTEXPR(const) float nan() { return __builtin_nanf(""); }
+inline constexpr float inf() { return __builtin_huge_valf(); }
+inline constexpr float nan() { return __builtin_nanf(""); }
 
 #elif _MSC_VER
 
 // Do what MSVC math.h does
 #pragma warning(push)
 #pragma warning(disable: 4756)  // "overflow in constant arithmetic"
-inline KJ_CONSTEXPR_VS14(const) float inf() { return (float)(1e300 * 1e300); }
+inline KJ_CONSTEXPR_VS14() float inf() { return (float)(1e300 * 1e300); }
 #pragma warning(pop)
 
 float nan();
@@ -638,8 +647,8 @@ float nan();
 #error "Not sure how to support your compiler."
 #endif
 
-inline KJ_CONSTEXPR_VS14(const) bool isNaN(float f) { return f != f; }
-inline KJ_CONSTEXPR_VS14(const) bool isNaN(double f) { return f != f; }
+inline KJ_CONSTEXPR_VS14() bool isNaN(float f) { return f != f; }
+inline KJ_CONSTEXPR_VS14() bool isNaN(double f) { return f != f; }
 
 // =======================================================================================
 // Useful fake containers
@@ -688,7 +697,7 @@ private:
 };
 
 template <typename T>
-inline KJ_CONSTEXPR_VS14(const) Range<Decay<T>> range(T begin, T end) { return Range<Decay<T>>(begin, end); }
+inline KJ_CONSTEXPR_VS14() Range<Decay<T>> range(T begin, T end) { return Range<Decay<T>>(begin, end); }
 // Returns a fake iterable container containing all values of T from `begin` (inclusive) to `end`
 // (exclusive).  Example:
 //
@@ -696,7 +705,7 @@ inline KJ_CONSTEXPR_VS14(const) Range<Decay<T>> range(T begin, T end) { return R
 //     for (int i: kj::range(1, 10)) { print(i); }
 
 template <typename T>
-inline KJ_CONSTEXPR_VS14(const) Range<size_t> indices(T&& container) {
+inline KJ_CONSTEXPR_VS14() Range<size_t> indices(T&& container) {
   // Shortcut for iterating over the indices of a container:
   //
   //     for (size_t i: kj::indices(myArray)) { handle(myArray[i]); }
@@ -817,7 +826,15 @@ class Maybe;
 
 namespace _ {  // private
 
-union MaxAlign
+#if KJ_VS12
+
+template<typename T>
+struct AddPointer_ { typedef T* Type; };
+
+template<typename T>
+using AddPointer = typename AddPointer_<T>::Type;
+
+union AlignmentDummy
 {
   int                 i;
   long                l;
@@ -826,27 +843,27 @@ union MaxAlign
   double              d;
   void*               p;
   void(*pf)();
-  MaxAlign*           ps;
+  AlignmentDummy*     ps;
 };
 
 template<typename T>
-class NoLifecycleWrapper
-{
+class TrivialWrapper {
 public:
-  using pointer = typename ::std::add_pointer<T>::type;
-  NoLifecycleWrapper() = default;
-  NoLifecycleWrapper(const NoLifecycleWrapper&) = delete;
+  using Pointer = AddPointer<T>;
 
-  T& get() { return *reinterpret_cast<pointer>(value); }
-  T* operator&() { return reinterpret_cast<pointer>(value); }
+  TrivialWrapper() = default;
+  KJ_DISALLOW_COPY(TrivialWrapper);
+
+  T& operator*() { return *reinterpret_cast<Pointer>(value); }
 
 private:
-  union
-  {
-    MaxAlign alignmentDummy;
-    unsigned char value[sizeof(T)];
+  union {
+    AlignmentDummy alignmentDummy;
+    char value[sizeof(T)];
   };
 };
+
+#endif
 
 template <typename T>
 class NullableValue {
@@ -1001,9 +1018,10 @@ private:
 #endif
 
 #if KJ_VS12
-
-  NoLifecycleWrapper<T> valueHolder;
-  T& value{valueHolder.get()};
+  //VS12 requires union members be trivial types
+  //so we accomplish something hackishy close with TrivialWrapper<T>
+  TrivialWrapper<T> valueHolder;
+  T& value{*valueHolder};
 
 #else
   union {

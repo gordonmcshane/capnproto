@@ -27,9 +27,6 @@
 #endif
 
 #include "common.h"
-#if KJ_VS12
-#include <type_traits>
-#endif
 
 namespace kj {
 
@@ -122,7 +119,7 @@ public:
   inline Own(Own<RemoveConstOrDisable<T>>&& other) KJ_NOEXCEPT
       : disposer(other.disposer), ptr(other.ptr) { other.ptr = nullptr; }
 #if KJ_VS12
-  template <typename U, typename = EnableIf<std::is_convertible<U*, T*>::value>>
+  template <typename U, typename = EnableIf<CanConvert<U*, T*>::value>>
 #else
   template <typename U, typename = EnableIf<canConvert<U*, T*>()>>
 #endif

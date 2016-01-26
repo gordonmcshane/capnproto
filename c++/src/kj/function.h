@@ -27,8 +27,8 @@
 #endif
 
 #if KJ_VS12
+// Needed for std::mem_fn
 #include <functional>
-#include <type_traits>
 #endif
 
 #include "memory.h"
