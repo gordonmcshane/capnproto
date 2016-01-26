@@ -254,7 +254,7 @@ using FromClient = typename kj::Decay_<T>::Type::Calls;
 // FromReader<MyType::Client> = MyType (for any Cap'n Proto interface type).
 
 template <typename T>
-using FromServer = typename kj::Decay_<T>::Type::Server;
+using FromServer = typename kj::Decay_<T>::Type::Serves;
 // FromBuilder<MyType::Server> = MyType (for any Cap'n Proto interface type).
 
 #else
@@ -276,7 +276,7 @@ using FromClient = typename kj::Decay<T>::Calls;
 // FromReader<MyType::Client> = MyType (for any Cap'n Proto interface type).
 
 template <typename T>
-using FromServer = typename kj::Decay<T>::Server;
+using FromServer = typename kj::Decay<T>::Serves;
 // FromBuilder<MyType::Server> = MyType (for any Cap'n Proto interface type).
 
 #endif
