@@ -26,9 +26,7 @@
 
 #if _WIN32
 #include <windows.h>
-#ifdef ERROR
-#undef ERROR
-#endif
+#include <kj/windows-sanity.h>
 #else
 #include <pthread.h>
 #include <unistd.h>

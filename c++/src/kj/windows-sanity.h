@@ -36,6 +36,14 @@ namespace win32 {
   const auto ERROR = ERROR_;
 }
 
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
 using win32::ERROR;
 
 #endif  // KJ_WINDOWS_SANITY_H_

@@ -34,14 +34,9 @@
 #include <limits.h>
 #if _WIN32
 #include <windows.h>
+#include <kj/windows-sanity.h>
 #include <io.h>
 #include <fcntl.h>
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
-#endif
 #else
 #include <sys/uio.h>
 #endif
