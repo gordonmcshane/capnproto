@@ -212,7 +212,7 @@ class OwnOwn {
 public:
   inline OwnOwn(Own<T>&& value) KJ_NOEXCEPT: value(kj::mv(value)) {}
 
-#if _MSC_VER
+#if KJ_REF_QUALIFIERS
   inline Own<T>& operator*() { return value; }
   inline const Own<T>& operator*() const { return value; }
 #else
