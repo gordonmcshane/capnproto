@@ -569,11 +569,12 @@ struct HeapArrayDisposer::Allocate_<T, true, true> {
 #if KJ_VS12
 template <typename T>
 struct HeapArrayDisposer::Allocate_<T, true, false> {
-	static T* allocate(size_t elementCount, size_t capacity) {
-		return reinterpret_cast<T*>(allocateImpl(
-			sizeof(T), elementCount, capacity, nullptr, nullptr));
-	}
+  static T* allocate(size_t elementCount, size_t capacity) {
+    return reinterpret_cast<T*>(allocateImpl(
+        sizeof(T), elementCount, capacity, nullptr, nullptr));
+  }
 };
+
 #endif
 
 template <typename T>
