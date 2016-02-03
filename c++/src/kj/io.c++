@@ -255,7 +255,13 @@ size_t FdInputStream::tryRead(void* buffer, size_t minBytes, size_t maxBytes) {
 
   while (pos < min) {
     miniposix::ssize_t n;
-    KJ_SYSCALL(n = miniposix::read(fd, pos, max - pos), fd);
+
+    // truncate at 2GB
+    size_t maxBytes = max - pos;
+    if (maxBytes > (1u << 31u) - 1u)
+        maxBytes = (1u << 31u) - 1u;
+
+    KJ_SYSCALL(n = miniposix::read(fd, pos, maxBytes), fd);
     if (n == 0) {
       break;
     }
